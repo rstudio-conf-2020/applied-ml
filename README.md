@@ -37,7 +37,7 @@ Attendees will be able to use the tidymodels packages to create, tune, fit, visu
 
 ## Is this course for me?
 
-THREE_QUESTIONS
+This course requires basic familiarity with R and the tidyverse.
 
 ## Prework
 
