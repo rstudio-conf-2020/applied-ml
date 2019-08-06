@@ -25,7 +25,11 @@ can remove these instructions from the README.
 
 ## Overview
 
-ABSTRACT
+Machine learning is the study and application of algorithms that learn from and make predictions on data. From search results to self-driving cars, it has manifested itself in all areas of our lives and is one of the most exciting and fast-growing fields of research in the world of data science. 
+
+This two-day course will provide an overview of using R for supervised learning. The session will step through the process of building, visualizing, testing, and comparing models that are focused on prediction. 
+
+The goal of the course is to provide a thorough workflow in R that can be used with many different regression or classification techniques. Case studies on real data will be used to illustrate the functionality and several different predictive models are illustrated. The course focuses on both low- and high-level approaches to modeling using the tidyverse and uses several types of models for illustration.
 
 ## Learning objectives
 
