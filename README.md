@@ -1,4 +1,4 @@
-WORKSHOP_TITLE
+Applied Machine Learning
 ================
 
 ### rstudio::conf 2020
