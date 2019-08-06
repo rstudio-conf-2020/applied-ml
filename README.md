@@ -33,7 +33,7 @@ The goal of the course is to provide a thorough workflow in R that can be used w
 
 ## Learning objectives
 
-LEARNING_OBJECTIVES
+Attendees will be able to use the tidymodels packages to create, tune, fit, visualize, and assess models created for the purpose of prediction.
 
 ## Is this course for me?
 
