@@ -3,22 +3,11 @@ Applied Machine Learning
 
 ### rstudio::conf 2020
 
-by Max Kuhn
-
------
-
-INSTRUCTIONS FOR INSTRUCTORS: Please insert information about your
-workshop below. Then, add workshop content in the materials folder and
-link to each session’s materials from the schedule below. You are
-welcomed to add more rows to the schedule. We just ask that you take
-breaks at the specified times. Once you are done adding information, you
-can remove these instructions from the README.
-
 -----
 
 :spiral_calendar: January 27 and 28, 2020  
 :alarm_clock:     09:00 - 17:00  
-:hotel:           \[ADD ROOM\]  
+:hotel: Continental Ballroom Rooms 4 (Ballroom Level)      
 :writing_hand:    [rstd.io/conf](http://rstd.io/conf)
 
 -----
@@ -41,10 +30,45 @@ This course requires basic familiarity with R and the tidyverse.
 
 ## Prework
 
-\[ADD INFORMATION YOU WANT LEARNERS TO HAVE / STEPS THEY WANT THEM TO
-COMPLETE PRIOR TO THE WORKSHOP. THIS COULD BE A LINK TO A THREAD ON
-RSTUDIO COMMUNITY, PACKAGE INSTALL INSTRUCTIONS, HOW TO GET AN
-RSTUDIO.CLOUD ACCOUNT, ETC.\]
+If you want to read up a bit about predictive modeling before the workshop, check out [chapter 1](https://bookdown.org/max/FES/intro-intro.html) and [chapter 3](https://bookdown.org/max/FES/review-predictive-modeling-process.html) of [_Feature Engineering and Selection_](https://bookdown.org/max/FES/). 
+
+We will have RStudio server pro instances will all of the packages installed as well as the above GitHub repository available. 
+
+If you would like to run R locally, the installation instructions are:
+
+```r
+install.packages(
+  c(
+    'AmesHousing',
+    'C50',
+    'devtools',
+    'discrim',
+    'earth',
+    'ggthemes',
+    'glmnet',   # See important note below
+    'klaR',
+    'lubridate',
+    'modeldata',
+    'party',
+    'pROC',
+    'rpart',
+    'stringr',
+    'textfeatures',
+    'tidymodels'
+  ),
+  repos = "http://cran.rstudio.com"
+)
+devtools::install_dev("tidymodels/tidymodels")
+devtools::install_github("tidymodels/textrecipes")
+devtools::install_github("koalaverse/vip")
+```
+
+**Important note! **  A new version of `glmnet` was released on 2019-11-09. Although it states that it depends on R (≥ 3.5.0), it may not install on R versions < 3.6.0. 
+
+We will be on-site at least 30min before the workshop commences in case you need any help getting packages installed. Prior to this, you can email `max@rstudio.com` with questions. 
+
+
+
 
 ## Schedule
 
@@ -58,9 +82,9 @@ RSTUDIO.CLOUD ACCOUNT, ETC.\]
 | 15:00 - 15:30 | *Coffee break*   |
 | 15:30 - 17:00 | Session 4        |
 
-## Instructor
+## Instructors
 
-\[ADD INSTRUCTOR BIO\]
+Max Kuhn and Davis Vaughan
 
 -----
 
