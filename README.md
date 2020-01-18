@@ -12,7 +12,7 @@ Applied Machine Learning
 
 -----
 
-![](https://github.com/rstudio-conf-2020/applied-ml/raw/master/images/rotate.gif | width=50)
+![](https://github.com/rstudio-conf-2020/applied-ml/raw/master/images/rotate.gif = 250x)
 
 -------
 
