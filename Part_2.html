@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+  <head>
+    <title>Applied Machine Learning</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Max Kuhn and Davis Vaughan (RStudio)" />
+    <meta name="date" content="2020-01-16" />
+    <script src="libs/jquery-1.11.3/jquery.min.js"></script>
+    <script src="libs/elevate-section-attrs-2.0/elevate-section-attrs.js"></script>
+    <link href="libs/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css" integrity="sha384-oS3vJWv+0UjzBfQzYUhtDYW+Pj2yciDJxpsK1OYPAYjqT085Qq/1cq5FLXAZQ7Ay" crossorigin="anonymous">
+    <link rel="stylesheet" href="assets/css/aml-theme.css" type="text/css" />
+    <link rel="stylesheet" href="assets/css/aml-fonts.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+
+
+class: title-slide, center
+
+&lt;span class="fa-stack fa-4x"&gt;
+  &lt;i class="fa fa-circle fa-stack-2x" style="color: #ffffff;"&gt;&lt;/i&gt;
+  &lt;strong class="fa-stack-1x" style="color:#E7553C;"&gt;2&lt;/strong&gt;
+&lt;/span&gt; 
+
+# Applied Machine Learning
+
+## Data Usage
+
+
+
+
+---
+# Loading
+
+.code90[
+
+
+```r
+library(tidymodels)
+```
+
+```
+## Registered S3 method overwritten by 'xts':
+##   method     from
+##   as.zoo.xts zoo
+```
+
+```
+## ── Attaching packages ─────────────────────────────────────────────────────────── tidymodels 0.0.4 ──
+```
+
+```
+## ✓ broom     0.5.2          ✓ recipes   0.1.9     
+## ✓ dials     0.0.4          ✓ rsample   0.0.5     
+## ✓ dplyr     0.8.3          ✓ tibble    2.1.3     
+## ✓ ggplot2   3.2.1          ✓ tune      0.0.1     
+## ✓ infer     0.5.1          ✓ workflows 0.1.0     
+## ✓ parsnip   0.0.4.9000     ✓ yardstick 0.0.4     
+## ✓ purrr     0.3.3
+```
+
+```
+## ── Conflicts ────────────────────────────────────────────────────────────── tidymodels_conflicts() ──
+## x purrr::discard()    masks scales::discard()
+## x dplyr::filter()     masks stats::filter()
+## x dplyr::lag()        masks stats::lag()
+## x ggplot2::margin()   masks dials::margin()
+## x recipes::step()     masks stats::step()
+## x recipes::yj_trans() masks scales::yj_trans()
+```
+
+```r
+library(AmesHousing)
+```
+
+]
+
+
+
+
+---
+
+# Data Splitting and Spending
+
+How do we "spend" the data to find an optimal model? 
+
+We _typically_ split data into training and test data sets:
+
+*  ***Training Set***: these data are used to estimate model parameters and to pick the values of the complexity parameter(s) for the model.
+
+*  ***Test Set***: these data can be used to get an independent assessment of model efficacy. They should not be used during model training. 
+
+
+---
+
+# Mechanics of Data Splitting
+
+There are a few different ways to do the split: simple random sampling, _stratified sampling based on the outcome_, by date, or methods that focus on the distribution of the predictors.
+
+For stratification:
+
+* **classification**: this would mean sampling within the classes to preserve the distribution of the outcome in the training and test sets
+
+* **regression**: determine the quartiles of the data set and sample within those artificial groups
+
+
+---
+
+# Ames Housing Data &lt;img src="images/rsample.png" class="title-hex"&gt;&lt;img src="images/dplyr.png" class="title-hex"&gt;
+
+Let's load the example data set and split it. We'll put 75% into training and 25% into testing. 
+
+
+```r
+# rsample loaded with tidyverse or tidymodels package
+ames &lt;- 
+  make_ames() %&gt;% 
+  # Remove quality-related predictors
+  dplyr::select(-matches("Qu"))
+nrow(ames)
+```
+
+```
+## [1] 2930
+```
+
+```r
+# resample functions
+# Make sure that you get the same random numbers
+set.seed(4595)
+data_split &lt;- initial_split(ames, strata = "Sale_Price")
+
+ames_train &lt;- training(data_split)
+ames_test  &lt;- testing(data_split)
+
+nrow(ames_train)/nrow(ames)
+```
+
+```
+## [1] 0.7505119
+```
+???
+
+The select statement removes subjective quality scores which, to me, seems
+like it should be an outcome and not a predictor. 
+
+---
+
+# Ames Housing Data &lt;img src="images/rsample.png" class="title-hex"&gt;
+
+What do these objects look like?
+
+
+```r
+# result of initial_split()
+# &lt;training / testing / total&gt;
+data_split
+```
+
+```
+## &lt;2199/731/2930&gt;
+```
+
+
+```r
+training(data_split)
+```
+
+
+```r
+## # A tibble: 2,199 x 81
+##    MS_SubClass MS_Zoning Lot_Frontage Lot_Area Street Alley Lot_Shape Land_Contour Utilities Lot_Config Land_Slope
+##    &lt;fct&gt;       &lt;fct&gt;            &lt;dbl&gt;    &lt;int&gt; &lt;fct&gt;  &lt;fct&gt; &lt;fct&gt;     &lt;fct&gt;        &lt;fct&gt;     &lt;fct&gt;      &lt;fct&gt;     
+##  1 One_Story_… Resident…          141    31770 Pave   No_A… Slightly… Lvl          AllPub    Corner     Gtl       
+##  2 Two_Story_… Resident…           74    13830 Pave   No_A… Slightly… Lvl          AllPub    Inside     Gtl       
+##  3 Two_Story_… Resident…           78     9978 Pave   No_A… Slightly… Lvl          AllPub    Inside     Gtl       
+##  4 One_Story_… Resident…           43     5005 Pave   No_A… Slightly… HLS          AllPub    Inside     Gtl       
+##  5 One_Story_… Resident…           39     5389 Pave   No_A… Slightly… Lvl          AllPub    Inside     Gtl       
+## # … and many more rows and columns
+## # …
+```
+
+
+---
+layout: false
+class: inverse, middle, center
+
+#  Creating Models in R
+
+
+---
+
+# Specifying Models in R Using Formulas
+
+To fit a model to the housing data, the model terms must be specified. Historically, there are two main interfaces for doing this. 
+
+The **formula** interface using R [formula rules](https://cran.r-project.org/doc/manuals/r-release/R-intro.html#Formulae-for-statistical-models) to specify a _symbolic_ representation of the terms:
+
+Variables + interactions
+
+
+```r
+model_fn(Sale_Price ~ Neighborhood + Year_Sold + Neighborhood:Year_Sold, data = ames_train)
+```
+
+Shorthand for all predictors
+
+
+```r
+model_fn(Sale_Price ~ ., data = ames_train)
+```
+
+Inline functions / transformations
+
+
+```r
+model_fn(log10(Sale_Price) ~ ns(Longitude, df = 3) + ns(Latitude, df = 3), data = ames_train)
+```
+
+This is very convenient but it has some disadvantages.  
+
+---
+
+# Downsides to Formulas
+
+* You can't nest in-line functions such as 
+
+```r
+model_fn(y ~ pca(scale(x1), scale(x2), scale(x3)), data = dat)
+```
+
+* All the model matrix calculations happen at once and can't be recycled when used in a model function. 
+
+* For very _wide_ data sets, the formula method can be [extremely inefficient](https://rviews.rstudio.com/2017/03/01/the-r-formula-method-the-bad-parts/). 
+
+* There are limited _roles_ that variables can take which has led to several re-implementations of formulas. 
+
+* Specifying multivariate outcomes is clunky and inelegant.
+
+* Not all modeling functions have a formula method (consistency!). 
+
+---
+
+# Specifying Models Without Formulas
+
+Some modeling function have a non-formula (XY) interface. This usually has arguments for the predictors and the outcome(s):
+
+
+```r
+# Usually, the variables must all be numeric
+pre_vars &lt;- c("Year_Sold", "Longitude", "Latitude")
+model_fn(x = ames_train[, pre_vars],
+         y = ames_train$Sale_Price)
+```
+
+This is inconvenient if you have transformations, factor variables, interactions, or any other operations to apply to the data prior to modeling. 
+
+Overall, it is difficult to predict if a package has one or both of these interfaces. For example, `lm` only has formulas. 
+
+There is a **third interface**, using _recipes_ that will be discussed later that solves some of these issues. 
+
+---
+
+# A Linear Regression Model &lt;img src="images/broom.png" class="title-hex"&gt;
+
+Let's start by fitting an ordinary linear regression model to the training set. You can choose the model terms for your model, but I will use a very simple model:
+
+
+```r
+simple_lm &lt;- lm(log10(Sale_Price) ~ Longitude + Latitude, data = ames_train)
+```
+
+Before looking at coefficients, we should do some model checking to see if there is anything obviously wrong with the model. 
+
+To get the statistics on the individual data points, we will use the awesome `broom` package:
+
+
+```r
+simple_lm_values &lt;- augment(simple_lm)
+names(simple_lm_values)
+```
+
+```
+##  [1] "log10.Sale_Price." "Longitude"         "Latitude"         
+##  [4] ".fitted"           ".se.fit"           ".resid"           
+##  [7] ".hat"              ".sigma"            ".cooksd"          
+## [10] ".std.resid"
+```
+
+---
+
+# parsnip &lt;img src="images/parsnip.png" class="title-hex"&gt;
+
+- A tidy unified _interface_ to models
+
+- `lm()` isn't the only way to perform linear regression
+  
+  - `glmnet` for regularized regression
+  
+  - `stan` for Bayesian regression
+  
+  - `keras` for regression using tensorflow
+  
+  - `spark` for large data sets
+  
+- But...remember the consistency slide?
+
+  - Each interface has its own minutae to remember
+  
+  - `parsnip` standardizes all that!
+  
+---
+
+# parsnip in Action &lt;img src="images/parsnip.png" class="title-hex"&gt;
+
+.pull-left[
+
+1) Create specification
+
+2) Set the engine
+
+3) Fit the model
+
+
+```r
+spec_lin_reg &lt;- linear_reg()
+spec_lin_reg
+```
+
+```
+## Linear Regression Model Specification (regression)
+```
+
+```r
+lm_mod &lt;- set_engine(spec_lin_reg, "lm")
+lm_mod
+```
+
+```
+## Linear Regression Model Specification (regression)
+## 
+## Computational engine: lm
+```
+
+]
+
+.pull-right[
+
+
+```r
+lm_fit &lt;- fit(
+  lm_mod,
+  log10(Sale_Price) ~ Longitude + Latitude,
+  data = ames_train
+)
+
+lm_fit
+```
+
+```
+## parsnip model object
+## 
+## Fit time:  2ms 
+## 
+## Call:
+## stats::lm(formula = formula, data = data)
+## 
+## Coefficients:
+## (Intercept)    Longitude     Latitude  
+##    -306.688       -2.032        2.893
+```
+
+]
+
+---
+
+# Different interfaces &lt;img src="images/parsnip.png" class="title-hex"&gt;
+
+`parsnip` is not picky about the interface used to specify terms. Remember, `lm()` only allowed the formula interface!
+
+
+```r
+ames_train_log &lt;- ames_train %&gt;%
+  mutate(Sale_Price_Log = log10(Sale_Price))
+
+fit_xy(
+  lm_mod,
+  y = ames_train_log$Sale_Price_Log,
+  x = ames_train_log %&gt;% dplyr::select(Latitude, Longitude)
+)
+```
+
+```
+## parsnip model object
+## 
+## Fit time:  1ms 
+## 
+## Call:
+## stats::lm(formula = formula, data = data)
+## 
+## Coefficients:
+## (Intercept)     Latitude    Longitude  
+##    -306.688        2.893       -2.032
+```
+
+---
+
+# Alternative Engines &lt;img src="images/parsnip.png" class="title-hex"&gt;
+
+With `parsnip`, it is easy to switch to a different engine, like Stan, to run the
+same model with alternative backends.
+
+.pull-left[
+
+
+```r
+spec_stan &lt;- 
+  spec_lin_reg %&gt;%
+  # Engine specific arguments are passed through here
+  set_engine("stan", chains = 4, iter = 1000)
+
+# Otherwise, looks exactly the same!
+fit_stan &lt;- fit(
+  spec_stan,
+  log10(Sale_Price) ~ Longitude + Latitude,
+  data = ames_train
+)
+```
+
+]
+
+.pull-right[
+
+
+```r
+coef(fit_stan$fit)
+```
+
+```
+## (Intercept)   Longitude    Latitude 
+## -306.335843   -2.030861    2.884487
+```
+
+```r
+coef(lm_fit$fit)
+```
+
+```
+## (Intercept)   Longitude    Latitude 
+## -306.688470   -2.032306    2.892838
+```
+
+]
+
+
+---
+
+# Different models &lt;img src="images/parsnip.png" class="title-hex"&gt;
+
+Switching _between_ models is easy since the interfaces are homogenous. 
+
+For example, to fit a 5-nearest neighbor model:
+
+
+
+```r
+fit_knn &lt;- 
+  nearest_neighbor(mode = "regression", neighbors = 5) %&gt;%
+  set_engine("kknn") %&gt;% 
+  fit(log10(Sale_Price) ~ Longitude + Latitude, data = ames_train)
+fit_knn
+```
+
+```
+## parsnip model object
+## 
+## Fit time:  31ms 
+## 
+## Call:
+## kknn::train.kknn(formula = formula, data = data, ks = ~5)
+## 
+## Type of response variable: continuous
+## minimal mean absolute error: 0.06753097
+## Minimal mean squared error: 0.009633708
+## Best kernel: optimal
+## Best k: 5
+```
+
+---
+
+# DANGER
+
+.pull-left[
+
+In a real scenario, we would use _resampling_ methods (e.g. cross-validation, bootstrapping, etc) or a validation set to evaluate how well the model is doing. 
+
+`tidymodels` has a great infrastructure to do this with the `rsample` package and we will talk about this soon to demonstrate how we should _really_ evaluate models. 
+
+
+In general, we would **not** want to predict the test set at this point. I'll do so to illustrate how the code to make predictions works.  
+]
+.pull-right[
+
+&lt;img src="images/nope.png" width="70%" style="display: block; margin: auto;" /&gt;
+
+]
+
+---
+
+# Predictions &lt;img src="images/purrr.png" class="title-hex"&gt;&lt;img src="images/parsnip.png" class="title-hex"&gt;&lt;img src="images/dplyr.png" class="title-hex"&gt;
+
+Now, let's compute predictions and performance measures:
+
+.pull-left[
+
+
+```r
+# Numeric predictions always in a df
+# with column `.pred`
+test_pred &lt;- 
+  lm_fit %&gt;%
+  predict(ames_test) %&gt;%
+  bind_cols(ames_test) %&gt;%
+  mutate(log_price = log10(Sale_Price))
+
+test_pred %&gt;% 
+  dplyr::select(log_price, .pred) %&gt;% 
+  slice(1:3)
+```
+
+```
+## # A tibble: 3 x 2
+##   log_price .pred
+##       &lt;dbl&gt; &lt;dbl&gt;
+## 1      5.33  5.23
+## 2      5.02  5.23
+## 3      5.27  5.27
+```
+]
+
+.pull-right[
+
+`parsnip` tools are very standardized. 
+
+ * `predict` always produces the same data structure (a tibble) with a row for each row of `new_data`. 
+ 
+ * The column names are also [predictable](https://tidymodels.github.io/parsnip/reference/predict.model_fit.html#value). For (univariate) regression predictions, the prediction column is always `.pred`. 
+
+So, for the KNN model, just change the argument to `fit_knn` and everything works.
+
+
+]
+
+
+---
+
+# Estimating Performance &lt;img src="images/yardstick.png" class="title-hex"&gt;
+
+
+.pull-left[
+The `yardstick` package is a tidy interface for computing measures of performance. 
+
+There are individual functions for specific metrics (e.g. `accuracy()`, `rmse()`, etc.).
+
+When more than one metric is desired, `metric_set()` can create a new function that wraps them. 
+
+Note that these metric functions work with `group_by()`. 
+]
+.pull-right[
+
+
+```r
+# yardstick loaded by tidymodels
+
+perf_metrics &lt;- metric_set(rmse, rsq, ccc)
+
+# A tidy result back:
+test_pred  %&gt;% 
+  perf_metrics(truth = log_price, estimate = .pred)
+```
+
+```
+## # A tibble: 3 x 3
+##   .metric .estimator .estimate
+##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt;
+## 1 rmse    standard       0.155
+## 2 rsq     standard       0.181
+## 3 ccc     standard       0.306
+```
+
+There are sometimes different ways to [estimate these statistics](https://tidymodels.github.io/yardstick/articles/multiclass.html); `.estimator` is not always "standard". 
+
+]
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script src="https://platform.twitter.com/widgets.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "solarized-light",
+"highlightLanguage": "R",
+"highlightLines": true,
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

@@ -32,7 +32,7 @@ This course requires basic familiarity with R and the tidyverse.
 
 If you want to read up a bit about predictive modeling before the workshop, check out [chapter 1](https://bookdown.org/max/FES/intro-intro.html) and [chapter 3](https://bookdown.org/max/FES/review-predictive-modeling-process.html) of [_Feature Engineering and Selection_](https://bookdown.org/max/FES/). 
 
-We will have RStudio server pro instances will all of the packages installed as well as the above GitHub repository available. 
+We will have RStudio server pro instances with all of the packages installed as well as the above GitHub repository available. 
 
 If you would like to run R locally, the installation instructions are:
 
@@ -59,6 +59,7 @@ install.packages(
   repos = "http://cran.rstudio.com"
 )
 devtools::install_dev("tidymodels/tidymodels")
+devtools::install_dev("tidymodels/tune")
 devtools::install_github("tidymodels/textrecipes")
 devtools::install_github("koalaverse/vip")
 ```

@@ -1,0 +1,1469 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(tidymodels)
+Registered S3 method overwritten by 'xts':
+  method     from
+  as.zoo.xts zoo 
+── Attaching packages ────────────────────────────────────── tidymodels 0.0.3 ──
+✔ broom     0.5.2          ✔ purrr     0.3.3     
+✔ dials     0.0.3.9001     ✔ recipes   0.1.7.9001
+✔ discrim   0.0.1          ✔ rsample   0.0.5     
+✔ dplyr     0.8.3          ✔ tibble    2.1.3     
+✔ ggplot2   3.2.1          ✔ tune      0.0.0.9003
+✔ infer     0.5.0          ✔ yardstick 0.0.4     
+✔ parsnip   0.0.4          
+── Conflicts ───────────────────────────────────────── tidymodels_conflicts() ──
+✖ purrr::discard()  masks scales::discard()
+✖ dplyr::filter()   masks stats::filter()
+✖ dplyr::lag()      masks stats::lag()
+✖ ggplot2::margin() masks dials::margin()
+✖ dials::offset()   masks stats::offset()
+✖ recipes::step()   masks stats::step()
+> library(tune)
+> 
+> library(doMC)
+Loading required package: foreach
+
+Attaching package: ‘foreach’
+
+The following objects are masked from ‘package:purrr’:
+
+    accumulate, when
+
+Loading required package: iterators
+Loading required package: parallel
+> registerDoMC(cores = 8)
+> 
+> # ------------------------------------------------------------------------------
+> 
+> set.seed(7898)
+> data_folds <- rolling_origin(Chicago, initial = 364 * 15, assess = 7 * 4, skip = 7 * 4, cumulative = FALSE)
+> 
+> # ------------------------------------------------------------------------------
+> 
+> library(stringr)
+
+Attaching package: ‘stringr’
+
+The following object is masked from ‘package:recipes’:
+
+    fixed
+
+> us_hol <- 
++   timeDate::listHolidays() %>% 
++   str_subset("(^US)|(Easter)")
+> 
+> chi_rec <-
++   recipe(ridership ~ ., data = Chicago) %>%
++   step_holiday(date, holidays = us_hol) %>%
++   step_date(date) %>%
++   step_rm(date) %>%
++   step_dummy(all_nominal()) %>%
++   step_zv(all_predictors())
+> 
+> mars_rec <- 
++   chi_rec %>% 
++   step_normalize(one_of(!!stations)) %>% 
++   step_pca(one_of(!!stations), num_comp = tune("pca comps"))
+> 
+> mars_mod <-  
++   mars(num_terms = tune("mars terms"), prod_degree = tune(), prune_method = "none") %>% 
++   set_engine("earth") %>% 
++   set_mode("regression")
+> 
+> chi_wflow <-
++   workflow() %>%
++   add_recipe(mars_rec) %>%
++   add_model(mars_mod)
+> 
+> chi_grid <- 
++   expand.grid(
++     `pca comps`  = 0:20,
++     prod_degree = 1:2,
++     `mars terms` = 2:100
++   )
+> 
+> all_res <-
++   tune_grid(
++     chi_wflow,
++     resamples = data_folds,
++     grid = chi_grid,
++     control = control_grid(verbose = TRUE)
++   )
+i Slice5: recipe
+i Slice2: recipe
+i Slice1: recipe
+i Slice6: recipe
+i Slice8: recipe
+i Slice3: recipe
+i Slice4: recipe
+i Slice7: recipe
+✓ Slice2: recipe
+✓ Slice5: recipe
+✓ Slice1: recipe
+✓ Slice7: recipe
+✓ Slice4: recipe
+✓ Slice3: recipe
+✓ Slice8: recipe
+✓ Slice6: recipe
+i Slice2: recipe  1/21, model 1/2
+i Slice5: recipe  1/21, model 1/2
+i Slice1: recipe  1/21, model 1/2
+i Slice3: recipe  1/21, model 1/2
+i Slice7: recipe  1/21, model 1/2
+i Slice4: recipe  1/21, model 1/2
+i Slice8: recipe  1/21, model 1/2
+i Slice6: recipe  1/21, model 1/2
+✓ Slice4: recipe  1/21, model 1/2
+i Slice4: recipe  1/21, model 1/2 (predictions)
+✓ Slice1: recipe  1/21, model 1/2
+i Slice1: recipe  1/21, model 1/2 (predictions)
+✓ Slice5: recipe  1/21, model 1/2
+i Slice5: recipe  1/21, model 1/2 (predictions)
+✓ Slice2: recipe  1/21, model 1/2
+i Slice2: recipe  1/21, model 1/2 (predictions)
+✓ Slice6: recipe  1/21, model 1/2
+i Slice6: recipe  1/21, model 1/2 (predictions)
+✓ Slice7: recipe  1/21, model 1/2
+i Slice7: recipe  1/21, model 1/2 (predictions)
+✓ Slice8: recipe  1/21, model 1/2
+i Slice8: recipe  1/21, model 1/2 (predictions)
+✓ Slice3: recipe  1/21, model 1/2
+i Slice3: recipe  1/21, model 1/2 (predictions)
+i Slice4: recipe  1/21, model 2/2
+i Slice5: recipe  1/21, model 2/2
+i Slice7: recipe  1/21, model 2/2
+i Slice3: recipe  1/21, model 2/2
+i Slice8: recipe  1/21, model 2/2
+✓ Slice4: recipe  1/21, model 2/2
+i Slice4: recipe  1/21, model 2/2 (predictions)
+i Slice1: recipe  1/21, model 2/2
+i Slice6: recipe  1/21, model 2/2
+i Slice2: recipe  1/21, model 2/2
+✓ Slice5: recipe  1/21, model 2/2
+i Slice5: recipe  1/21, model 2/2 (predictions)
+✓ Slice7: recipe  1/21, model 2/2
+i Slice7: recipe  1/21, model 2/2 (predictions)
+✓ Slice3: recipe  1/21, model 2/2
+i Slice3: recipe  1/21, model 2/2 (predictions)
+✓ Slice1: recipe  1/21, model 2/2
+i Slice1: recipe  1/21, model 2/2 (predictions)
+✓ Slice8: recipe  1/21, model 2/2
+i Slice8: recipe  1/21, model 2/2 (predictions)
+✓ Slice2: recipe  1/21, model 2/2
+i Slice2: recipe  1/21, model 2/2 (predictions)
+✓ Slice6: recipe  1/21, model 2/2
+i Slice6: recipe  1/21, model 2/2 (predictions)
+i Slice4: recipe
+✓ Slice4: recipe
+i Slice4: recipe  2/21, model 1/2
+✓ Slice4: recipe  2/21, model 1/2
+i Slice4: recipe  2/21, model 1/2 (predictions)
+i Slice5: recipe
+✓ Slice5: recipe
+i Slice5: recipe  2/21, model 1/2
+i Slice3: recipe
+✓ Slice3: recipe
+i Slice7: recipe
+i Slice3: recipe  2/21, model 1/2
+✓ Slice7: recipe
+i Slice7: recipe  2/21, model 1/2
+✓ Slice5: recipe  2/21, model 1/2
+i Slice5: recipe  2/21, model 1/2 (predictions)
+✓ Slice3: recipe  2/21, model 1/2
+i Slice3: recipe  2/21, model 1/2 (predictions)
+✓ Slice7: recipe  2/21, model 1/2
+i Slice7: recipe  2/21, model 1/2 (predictions)
+i Slice1: recipe
+✓ Slice1: recipe
+i Slice1: recipe  2/21, model 1/2
+i Slice2: recipe
+✓ Slice2: recipe
+i Slice2: recipe  2/21, model 1/2
+i Slice6: recipe
+✓ Slice1: recipe  2/21, model 1/2
+i Slice1: recipe  2/21, model 1/2 (predictions)
+✓ Slice6: recipe
+i Slice6: recipe  2/21, model 1/2
+i Slice8: recipe
+✓ Slice8: recipe
+i Slice8: recipe  2/21, model 1/2
+✓ Slice2: recipe  2/21, model 1/2
+i Slice2: recipe  2/21, model 1/2 (predictions)
+✓ Slice6: recipe  2/21, model 1/2
+i Slice6: recipe  2/21, model 1/2 (predictions)
+✓ Slice8: recipe  2/21, model 1/2
+i Slice8: recipe  2/21, model 1/2 (predictions)
+i Slice4: recipe  2/21, model 2/2
+✓ Slice4: recipe  2/21, model 2/2
+i Slice4: recipe  2/21, model 2/2 (predictions)
+i Slice5: recipe  2/21, model 2/2
+i Slice1: recipe  2/21, model 2/2
+✓ Slice5: recipe  2/21, model 2/2
+i Slice5: recipe  2/21, model 2/2 (predictions)
+i Slice8: recipe  2/21, model 2/2
+i Slice2: recipe  2/21, model 2/2
+i Slice6: recipe  2/21, model 2/2
+✓ Slice1: recipe  2/21, model 2/2
+i Slice1: recipe  2/21, model 2/2 (predictions)
+i Slice3: recipe  2/21, model 2/2
+✓ Slice8: recipe  2/21, model 2/2
+i Slice8: recipe  2/21, model 2/2 (predictions)
+✓ Slice6: recipe  2/21, model 2/2
+i Slice6: recipe  2/21, model 2/2 (predictions)
+✓ Slice2: recipe  2/21, model 2/2
+i Slice2: recipe  2/21, model 2/2 (predictions)
+i Slice7: recipe  2/21, model 2/2
+✓ Slice3: recipe  2/21, model 2/2
+i Slice3: recipe  2/21, model 2/2 (predictions)
+✓ Slice7: recipe  2/21, model 2/2
+i Slice7: recipe  2/21, model 2/2 (predictions)
+i Slice4: recipe
+✓ Slice4: recipe
+i Slice4: recipe  3/21, model 1/2
+✓ Slice4: recipe  3/21, model 1/2
+i Slice4: recipe  3/21, model 1/2 (predictions)
+i Slice5: recipe
+✓ Slice5: recipe
+i Slice5: recipe  3/21, model 1/2
+✓ Slice5: recipe  3/21, model 1/2
+i Slice5: recipe  3/21, model 1/2 (predictions)
+i Slice1: recipe
+✓ Slice1: recipe
+i Slice1: recipe  3/21, model 1/2
+✓ Slice1: recipe  3/21, model 1/2
+i Slice1: recipe  3/21, model 1/2 (predictions)
+i Slice3: recipe
+✓ Slice3: recipe
+i Slice3: recipe  3/21, model 1/2
+i Slice8: recipe
+✓ Slice3: recipe  3/21, model 1/2
+i Slice3: recipe  3/21, model 1/2 (predictions)
+✓ Slice8: recipe
+i Slice8: recipe  3/21, model 1/2
+i Slice2: recipe
+✓ Slice2: recipe
+i Slice2: recipe  3/21, model 1/2
+✓ Slice8: recipe  3/21, model 1/2
+i Slice8: recipe  3/21, model 1/2 (predictions)
+✓ Slice2: recipe  3/21, model 1/2
+i Slice2: recipe  3/21, model 1/2 (predictions)
+i Slice7: recipe
+i Slice6: recipe
+✓ Slice7: recipe
+✓ Slice6: recipe
+i Slice7: recipe  3/21, model 1/2
+i Slice6: recipe  3/21, model 1/2
+✓ Slice7: recipe  3/21, model 1/2
+i Slice7: recipe  3/21, model 1/2 (predictions)
+✓ Slice6: recipe  3/21, model 1/2
+i Slice6: recipe  3/21, model 1/2 (predictions)
+i Slice4: recipe  3/21, model 2/2
+✓ Slice4: recipe  3/21, model 2/2
+i Slice4: recipe  3/21, model 2/2 (predictions)
+i Slice5: recipe  3/21, model 2/2
+i Slice1: recipe  3/21, model 2/2
+✓ Slice5: recipe  3/21, model 2/2
+i Slice5: recipe  3/21, model 2/2 (predictions)
+✓ Slice1: recipe  3/21, model 2/2
+i Slice1: recipe  3/21, model 2/2 (predictions)
+i Slice3: recipe  3/21, model 2/2
+i Slice8: recipe  3/21, model 2/2
+i Slice2: recipe  3/21, model 2/2
+i Slice7: recipe  3/21, model 2/2
+✓ Slice3: recipe  3/21, model 2/2
+i Slice3: recipe  3/21, model 2/2 (predictions)
+✓ Slice8: recipe  3/21, model 2/2
+i Slice8: recipe  3/21, model 2/2 (predictions)
+i Slice6: recipe  3/21, model 2/2
+✓ Slice2: recipe  3/21, model 2/2
+i Slice2: recipe  3/21, model 2/2 (predictions)
+✓ Slice7: recipe  3/21, model 2/2
+i Slice7: recipe  3/21, model 2/2 (predictions)
+✓ Slice6: recipe  3/21, model 2/2
+i Slice6: recipe  3/21, model 2/2 (predictions)
+i Slice4: recipe
+✓ Slice4: recipe
+i Slice4: recipe  4/21, model 1/2
+✓ Slice4: recipe  4/21, model 1/2
+i Slice4: recipe  4/21, model 1/2 (predictions)
+i Slice1: recipe
+✓ Slice1: recipe
+i Slice1: recipe  4/21, model 1/2
+✓ Slice1: recipe  4/21, model 1/2
+i Slice1: recipe  4/21, model 1/2 (predictions)
+i Slice5: recipe
+✓ Slice5: recipe
+i Slice5: recipe  4/21, model 1/2
+✓ Slice5: recipe  4/21, model 1/2
+i Slice5: recipe  4/21, model 1/2 (predictions)
+i Slice8: recipe
+✓ Slice8: recipe
+i Slice8: recipe  4/21, model 1/2
+✓ Slice8: recipe  4/21, model 1/2
+i Slice8: recipe  4/21, model 1/2 (predictions)
+i Slice2: recipe
+i Slice7: recipe
+✓ Slice2: recipe
+✓ Slice7: recipe
+i Slice2: recipe  4/21, model 1/2
+i Slice7: recipe  4/21, model 1/2
+i Slice6: recipe
+✓ Slice2: recipe  4/21, model 1/2
+i Slice2: recipe  4/21, model 1/2 (predictions)
+✓ Slice7: recipe  4/21, model 1/2
+i Slice7: recipe  4/21, model 1/2 (predictions)
+✓ Slice6: recipe
+i Slice6: recipe  4/21, model 1/2
+✓ Slice6: recipe  4/21, model 1/2
+i Slice6: recipe  4/21, model 1/2 (predictions)
+i Slice3: recipe
+✓ Slice3: recipe
+i Slice3: recipe  4/21, model 1/2
+✓ Slice3: recipe  4/21, model 1/2
+i Slice3: recipe  4/21, model 1/2 (predictions)
+i Slice4: recipe  4/21, model 2/2
+i Slice1: recipe  4/21, model 2/2
+✓ Slice4: recipe  4/21, model 2/2
+i Slice4: recipe  4/21, model 2/2 (predictions)
+i Slice5: recipe  4/21, model 2/2
+✓ Slice1: recipe  4/21, model 2/2
+i Slice1: recipe  4/21, model 2/2 (predictions)
+✓ Slice5: recipe  4/21, model 2/2
+i Slice5: recipe  4/21, model 2/2 (predictions)
+i Slice8: recipe  4/21, model 2/2
+i Slice2: recipe  4/21, model 2/2
+i Slice7: recipe  4/21, model 2/2
+✓ Slice8: recipe  4/21, model 2/2
+i Slice8: recipe  4/21, model 2/2 (predictions)
+i Slice6: recipe  4/21, model 2/2
+i Slice3: recipe  4/21, model 2/2
+✓ Slice7: recipe  4/21, model 2/2
+i Slice7: recipe  4/21, model 2/2 (predictions)
+✓ Slice2: recipe  4/21, model 2/2
+i Slice2: recipe  4/21, model 2/2 (predictions)
+✓ Slice6: recipe  4/21, model 2/2
+i Slice6: recipe  4/21, model 2/2 (predictions)
+✓ Slice3: recipe  4/21, model 2/2
+i Slice3: recipe  4/21, model 2/2 (predictions)
+i Slice4: recipe
+✓ Slice4: recipe
+i Slice4: recipe  5/21, model 1/2
+✓ Slice4: recipe  5/21, model 1/2
+i Slice4: recipe  5/21, model 1/2 (predictions)
+i Slice5: recipe
+✓ Slice5: recipe
+i Slice5: recipe  5/21, model 1/2
+✓ Slice5: recipe  5/21, model 1/2
+i Slice5: recipe  5/21, model 1/2 (predictions)
+i Slice1: recipe
+✓ Slice1: recipe
+i Slice1: recipe  5/21, model 1/2
+✓ Slice1: recipe  5/21, model 1/2
+i Slice1: recipe  5/21, model 1/2 (predictions)
+i Slice8: recipe
+✓ Slice8: recipe
+i Slice8: recipe  5/21, model 1/2
+✓ Slice8: recipe  5/21, model 1/2
+i Slice8: recipe  5/21, model 1/2 (predictions)
+i Slice2: recipe
+✓ Slice2: recipe
+i Slice2: recipe  5/21, model 1/2
+✓ Slice2: recipe  5/21, model 1/2
+i Slice2: recipe  5/21, model 1/2 (predictions)
+i Slice7: recipe
+✓ Slice7: recipe
+i Slice7: recipe  5/21, model 1/2
+i Slice3: recipe
+✓ Slice3: recipe
+✓ Slice7: recipe  5/21, model 1/2
+i Slice7: recipe  5/21, model 1/2 (predictions)
+i Slice3: recipe  5/21, model 1/2
+✓ Slice3: recipe  5/21, model 1/2
+i Slice3: recipe  5/21, model 1/2 (predictions)
+i Slice6: recipe
+✓ Slice6: recipe
+i Slice6: recipe  5/21, model 1/2
+✓ Slice6: recipe  5/21, model 1/2
+i Slice6: recipe  5/21, model 1/2 (predictions)
+i Slice4: recipe  5/21, model 2/2
+✓ Slice4: recipe  5/21, model 2/2
+i Slice4: recipe  5/21, model 2/2 (predictions)
+i Slice5: recipe  5/21, model 2/2
+✓ Slice5: recipe  5/21, model 2/2
+i Slice5: recipe  5/21, model 2/2 (predictions)
+i Slice1: recipe  5/21, model 2/2
+i Slice8: recipe  5/21, model 2/2
+✓ Slice1: recipe  5/21, model 2/2
+i Slice1: recipe  5/21, model 2/2 (predictions)
+i Slice2: recipe  5/21, model 2/2
+✓ Slice8: recipe  5/21, model 2/2
+i Slice8: recipe  5/21, model 2/2 (predictions)
+i Slice7: recipe  5/21, model 2/2
+i Slice3: recipe  5/21, model 2/2
+✓ Slice2: recipe  5/21, model 2/2
+i Slice2: recipe  5/21, model 2/2 (predictions)
+✓ Slice7: recipe  5/21, model 2/2
+i Slice7: recipe  5/21, model 2/2 (predictions)
+✓ Slice3: recipe  5/21, model 2/2
+i Slice3: recipe  5/21, model 2/2 (predictions)
+i Slice6: recipe  5/21, model 2/2
+✓ Slice6: recipe  5/21, model 2/2
+i Slice6: recipe  5/21, model 2/2 (predictions)
+i Slice4: recipe
+✓ Slice4: recipe
+i Slice4: recipe  6/21, model 1/2
+✓ Slice4: recipe  6/21, model 1/2
+i Slice4: recipe  6/21, model 1/2 (predictions)
+i Slice5: recipe
+✓ Slice5: recipe
+i Slice5: recipe  6/21, model 1/2
+✓ Slice5: recipe  6/21, model 1/2
+i Slice5: recipe  6/21, model 1/2 (predictions)
+i Slice1: recipe
+✓ Slice1: recipe
+i Slice1: recipe  6/21, model 1/2
+✓ Slice1: recipe  6/21, model 1/2
+i Slice1: recipe  6/21, model 1/2 (predictions)
+i Slice8: recipe
+✓ Slice8: recipe
+i Slice8: recipe  6/21, model 1/2
+✓ Slice8: recipe  6/21, model 1/2
+i Slice8: recipe  6/21, model 1/2 (predictions)
+i Slice3: recipe
+i Slice7: recipe
+✓ Slice3: recipe
+i Slice3: recipe  6/21, model 1/2
+✓ Slice7: recipe
+i Slice7: recipe  6/21, model 1/2
+✓ Slice3: recipe  6/21, model 1/2
+i Slice3: recipe  6/21, model 1/2 (predictions)
+i Slice2: recipe
+✓ Slice7: recipe  6/21, model 1/2
+i Slice7: recipe  6/21, model 1/2 (predictions)
+✓ Slice2: recipe
+i Slice2: recipe  6/21, model 1/2
+✓ Slice2: recipe  6/21, model 1/2
+i Slice2: recipe  6/21, model 1/2 (predictions)
+i Slice6: recipe
+✓ Slice6: recipe
+i Slice6: recipe  6/21, model 1/2
+✓ Slice6: recipe  6/21, model 1/2
+i Slice6: recipe  6/21, model 1/2 (predictions)
+i Slice4: recipe  6/21, model 2/2
+✓ Slice4: recipe  6/21, model 2/2
+i Slice4: recipe  6/21, model 2/2 (predictions)
+i Slice5: recipe  6/21, model 2/2
+✓ Slice5: recipe  6/21, model 2/2
+i Slice5: recipe  6/21, model 2/2 (predictions)
+i Slice1: recipe  6/21, model 2/2
+i Slice8: recipe  6/21, model 2/2
+✓ Slice1: recipe  6/21, model 2/2
+i Slice1: recipe  6/21, model 2/2 (predictions)
+✓ Slice8: recipe  6/21, model 2/2
+i Slice8: recipe  6/21, model 2/2 (predictions)
+i Slice3: recipe  6/21, model 2/2
+i Slice7: recipe  6/21, model 2/2
+i Slice2: recipe  6/21, model 2/2
+✓ Slice7: recipe  6/21, model 2/2
+i Slice7: recipe  6/21, model 2/2 (predictions)
+✓ Slice3: recipe  6/21, model 2/2
+i Slice3: recipe  6/21, model 2/2 (predictions)
+✓ Slice2: recipe  6/21, model 2/2
+i Slice2: recipe  6/21, model 2/2 (predictions)
+i Slice6: recipe  6/21, model 2/2
+✓ Slice6: recipe  6/21, model 2/2
+i Slice6: recipe  6/21, model 2/2 (predictions)
+i Slice4: recipe
+✓ Slice4: recipe
+i Slice4: recipe  7/21, model 1/2
+✓ Slice4: recipe  7/21, model 1/2
+i Slice4: recipe  7/21, model 1/2 (predictions)
+i Slice5: recipe
+✓ Slice5: recipe
+i Slice5: recipe  7/21, model 1/2
+✓ Slice5: recipe  7/21, model 1/2
+i Slice5: recipe  7/21, model 1/2 (predictions)
+i Slice1: recipe
+✓ Slice1: recipe
+i Slice1: recipe  7/21, model 1/2
+✓ Slice1: recipe  7/21, model 1/2
+i Slice1: recipe  7/21, model 1/2 (predictions)
+i Slice8: recipe
+i Slice3: recipe
+✓ Slice8: recipe
+i Slice8: recipe  7/21, model 1/2
+✓ Slice3: recipe
+i Slice3: recipe  7/21, model 1/2
+✓ Slice8: recipe  7/21, model 1/2
+i Slice8: recipe  7/21, model 1/2 (predictions)
+✓ Slice3: recipe  7/21, model 1/2
+i Slice3: recipe  7/21, model 1/2 (predictions)
+i Slice7: recipe
+✓ Slice7: recipe
+i Slice7: recipe  7/21, model 1/2
+i Slice2: recipe
+✓ Slice2: recipe
+i Slice2: recipe  7/21, model 1/2
+✓ Slice7: recipe  7/21, model 1/2
+i Slice7: recipe  7/21, model 1/2 (predictions)
+✓ Slice2: recipe  7/21, model 1/2
+i Slice2: recipe  7/21, model 1/2 (predictions)
+i Slice6: recipe
+✓ Slice6: recipe
+i Slice6: recipe  7/21, model 1/2
+✓ Slice6: recipe  7/21, model 1/2
+i Slice6: recipe  7/21, model 1/2 (predictions)
+i Slice4: recipe  7/21, model 2/2
+✓ Slice4: recipe  7/21, model 2/2
+i Slice4: recipe  7/21, model 2/2 (predictions)
+i Slice5: recipe  7/21, model 2/2
+✓ Slice5: recipe  7/21, model 2/2
+i Slice5: recipe  7/21, model 2/2 (predictions)
+i Slice1: recipe  7/21, model 2/2
+✓ Slice1: recipe  7/21, model 2/2
+i Slice1: recipe  7/21, model 2/2 (predictions)
+i Slice8: recipe  7/21, model 2/2
+i Slice3: recipe  7/21, model 2/2
+i Slice2: recipe  7/21, model 2/2
+✓ Slice8: recipe  7/21, model 2/2
+i Slice8: recipe  7/21, model 2/2 (predictions)
+✓ Slice3: recipe  7/21, model 2/2
+i Slice3: recipe  7/21, model 2/2 (predictions)
+i Slice6: recipe  7/21, model 2/2
+✓ Slice2: recipe  7/21, model 2/2
+i Slice2: recipe  7/21, model 2/2 (predictions)
+i Slice7: recipe  7/21, model 2/2
+✓ Slice6: recipe  7/21, model 2/2
+i Slice6: recipe  7/21, model 2/2 (predictions)
+✓ Slice7: recipe  7/21, model 2/2
+i Slice7: recipe  7/21, model 2/2 (predictions)
+i Slice4: recipe
+✓ Slice4: recipe
+i Slice4: recipe  8/21, model 1/2
+✓ Slice4: recipe  8/21, model 1/2
+i Slice4: recipe  8/21, model 1/2 (predictions)
+i Slice5: recipe
+✓ Slice5: recipe
+i Slice5: recipe  8/21, model 1/2
+✓ Slice5: recipe  8/21, model 1/2
+i Slice5: recipe  8/21, model 1/2 (predictions)
+i Slice1: recipe
+✓ Slice1: recipe
+i Slice1: recipe  8/21, model 1/2
+✓ Slice1: recipe  8/21, model 1/2
+i Slice1: recipe  8/21, model 1/2 (predictions)
+i Slice8: recipe
+✓ Slice8: recipe
+i Slice8: recipe  8/21, model 1/2
+✓ Slice8: recipe  8/21, model 1/2
+i Slice8: recipe  8/21, model 1/2 (predictions)
+i Slice2: recipe
+✓ Slice2: recipe
+i Slice2: recipe  8/21, model 1/2
+✓ Slice2: recipe  8/21, model 1/2
+i Slice2: recipe  8/21, model 1/2 (predictions)
+i Slice3: recipe
+✓ Slice3: recipe
+i Slice3: recipe  8/21, model 1/2
+✓ Slice3: recipe  8/21, model 1/2
+i Slice3: recipe  8/21, model 1/2 (predictions)
+i Slice6: recipe
+✓ Slice6: recipe
+i Slice6: recipe  8/21, model 1/2
+✓ Slice6: recipe  8/21, model 1/2
+i Slice6: recipe  8/21, model 1/2 (predictions)
+i Slice7: recipe
+✓ Slice7: recipe
+i Slice7: recipe  8/21, model 1/2
+✓ Slice7: recipe  8/21, model 1/2
+i Slice7: recipe  8/21, model 1/2 (predictions)
+i Slice4: recipe  8/21, model 2/2
+✓ Slice4: recipe  8/21, model 2/2
+i Slice4: recipe  8/21, model 2/2 (predictions)
+i Slice5: recipe  8/21, model 2/2
+✓ Slice5: recipe  8/21, model 2/2
+i Slice5: recipe  8/21, model 2/2 (predictions)
+i Slice1: recipe  8/21, model 2/2
+✓ Slice1: recipe  8/21, model 2/2
+i Slice1: recipe  8/21, model 2/2 (predictions)
+i Slice8: recipe  8/21, model 2/2
+✓ Slice8: recipe  8/21, model 2/2
+i Slice8: recipe  8/21, model 2/2 (predictions)
+i Slice2: recipe  8/21, model 2/2
+i Slice3: recipe  8/21, model 2/2
+✓ Slice2: recipe  8/21, model 2/2
+i Slice2: recipe  8/21, model 2/2 (predictions)
+✓ Slice3: recipe  8/21, model 2/2
+i Slice3: recipe  8/21, model 2/2 (predictions)
+i Slice6: recipe  8/21, model 2/2
+✓ Slice6: recipe  8/21, model 2/2
+i Slice6: recipe  8/21, model 2/2 (predictions)
+i Slice7: recipe  8/21, model 2/2
+✓ Slice7: recipe  8/21, model 2/2
+i Slice7: recipe  8/21, model 2/2 (predictions)
+i Slice4: recipe
+✓ Slice4: recipe
+i Slice4: recipe  9/21, model 1/2
+✓ Slice4: recipe  9/21, model 1/2
+i Slice4: recipe  9/21, model 1/2 (predictions)
+i Slice5: recipe
+✓ Slice5: recipe
+i Slice5: recipe  9/21, model 1/2
+✓ Slice5: recipe  9/21, model 1/2
+i Slice5: recipe  9/21, model 1/2 (predictions)
+i Slice1: recipe
+✓ Slice1: recipe
+i Slice1: recipe  9/21, model 1/2
+✓ Slice1: recipe  9/21, model 1/2
+i Slice1: recipe  9/21, model 1/2 (predictions)
+i Slice8: recipe
+✓ Slice8: recipe
+i Slice8: recipe  9/21, model 1/2
+✓ Slice8: recipe  9/21, model 1/2
+i Slice8: recipe  9/21, model 1/2 (predictions)
+i Slice2: recipe
+✓ Slice2: recipe
+i Slice2: recipe  9/21, model 1/2
+✓ Slice2: recipe  9/21, model 1/2
+i Slice2: recipe  9/21, model 1/2 (predictions)
+i Slice3: recipe
+✓ Slice3: recipe
+i Slice3: recipe  9/21, model 1/2
+✓ Slice3: recipe  9/21, model 1/2
+i Slice3: recipe  9/21, model 1/2 (predictions)
+i Slice6: recipe
+✓ Slice6: recipe
+i Slice6: recipe  9/21, model 1/2
+✓ Slice6: recipe  9/21, model 1/2
+i Slice6: recipe  9/21, model 1/2 (predictions)
+i Slice7: recipe
+✓ Slice7: recipe
+i Slice7: recipe  9/21, model 1/2
+✓ Slice7: recipe  9/21, model 1/2
+i Slice7: recipe  9/21, model 1/2 (predictions)
+i Slice4: recipe  9/21, model 2/2
+✓ Slice4: recipe  9/21, model 2/2
+i Slice4: recipe  9/21, model 2/2 (predictions)
+i Slice5: recipe  9/21, model 2/2
+✓ Slice5: recipe  9/21, model 2/2
+i Slice5: recipe  9/21, model 2/2 (predictions)
+i Slice1: recipe  9/21, model 2/2
+i Slice8: recipe  9/21, model 2/2
+✓ Slice1: recipe  9/21, model 2/2
+i Slice1: recipe  9/21, model 2/2 (predictions)
+✓ Slice8: recipe  9/21, model 2/2
+i Slice8: recipe  9/21, model 2/2 (predictions)
+i Slice2: recipe  9/21, model 2/2
+i Slice3: recipe  9/21, model 2/2
+✓ Slice2: recipe  9/21, model 2/2
+i Slice2: recipe  9/21, model 2/2 (predictions)
+✓ Slice3: recipe  9/21, model 2/2
+i Slice3: recipe  9/21, model 2/2 (predictions)
+i Slice6: recipe  9/21, model 2/2
+✓ Slice6: recipe  9/21, model 2/2
+i Slice6: recipe  9/21, model 2/2 (predictions)
+i Slice7: recipe  9/21, model 2/2
+✓ Slice7: recipe  9/21, model 2/2
+i Slice7: recipe  9/21, model 2/2 (predictions)
+i Slice4: recipe
+✓ Slice4: recipe
+i Slice4: recipe 10/21, model 1/2
+i Slice5: recipe
+✓ Slice4: recipe 10/21, model 1/2
+i Slice4: recipe 10/21, model 1/2 (predictions)
+✓ Slice5: recipe
+i Slice5: recipe 10/21, model 1/2
+✓ Slice5: recipe 10/21, model 1/2
+i Slice5: recipe 10/21, model 1/2 (predictions)
+i Slice1: recipe
+✓ Slice1: recipe
+i Slice1: recipe 10/21, model 1/2
+✓ Slice1: recipe 10/21, model 1/2
+i Slice1: recipe 10/21, model 1/2 (predictions)
+i Slice8: recipe
+✓ Slice8: recipe
+i Slice8: recipe 10/21, model 1/2
+i Slice3: recipe
+✓ Slice3: recipe
+i Slice3: recipe 10/21, model 1/2
+✓ Slice8: recipe 10/21, model 1/2
+i Slice8: recipe 10/21, model 1/2 (predictions)
+✓ Slice3: recipe 10/21, model 1/2
+i Slice3: recipe 10/21, model 1/2 (predictions)
+i Slice6: recipe
+✓ Slice6: recipe
+i Slice6: recipe 10/21, model 1/2
+✓ Slice6: recipe 10/21, model 1/2
+i Slice6: recipe 10/21, model 1/2 (predictions)
+i Slice2: recipe
+✓ Slice2: recipe
+i Slice2: recipe 10/21, model 1/2
+✓ Slice2: recipe 10/21, model 1/2
+i Slice2: recipe 10/21, model 1/2 (predictions)
+i Slice7: recipe
+✓ Slice7: recipe
+i Slice7: recipe 10/21, model 1/2
+✓ Slice7: recipe 10/21, model 1/2
+i Slice7: recipe 10/21, model 1/2 (predictions)
+i Slice4: recipe 10/21, model 2/2
+i Slice5: recipe 10/21, model 2/2
+✓ Slice4: recipe 10/21, model 2/2
+i Slice4: recipe 10/21, model 2/2 (predictions)
+✓ Slice5: recipe 10/21, model 2/2
+i Slice5: recipe 10/21, model 2/2 (predictions)
+i Slice1: recipe 10/21, model 2/2
+✓ Slice1: recipe 10/21, model 2/2
+i Slice1: recipe 10/21, model 2/2 (predictions)
+i Slice8: recipe 10/21, model 2/2
+i Slice3: recipe 10/21, model 2/2
+✓ Slice8: recipe 10/21, model 2/2
+i Slice8: recipe 10/21, model 2/2 (predictions)
+✓ Slice3: recipe 10/21, model 2/2
+i Slice3: recipe 10/21, model 2/2 (predictions)
+i Slice6: recipe 10/21, model 2/2
+i Slice2: recipe 10/21, model 2/2
+✓ Slice6: recipe 10/21, model 2/2
+i Slice6: recipe 10/21, model 2/2 (predictions)
+i Slice7: recipe 10/21, model 2/2
+✓ Slice2: recipe 10/21, model 2/2
+i Slice2: recipe 10/21, model 2/2 (predictions)
+✓ Slice7: recipe 10/21, model 2/2
+i Slice7: recipe 10/21, model 2/2 (predictions)
+i Slice4: recipe
+✓ Slice4: recipe
+i Slice4: recipe 11/21, model 1/2
+✓ Slice4: recipe 11/21, model 1/2
+i Slice4: recipe 11/21, model 1/2 (predictions)
+i Slice5: recipe
+✓ Slice5: recipe
+i Slice5: recipe 11/21, model 1/2
+✓ Slice5: recipe 11/21, model 1/2
+i Slice5: recipe 11/21, model 1/2 (predictions)
+i Slice1: recipe
+✓ Slice1: recipe
+i Slice1: recipe 11/21, model 1/2
+✓ Slice1: recipe 11/21, model 1/2
+i Slice1: recipe 11/21, model 1/2 (predictions)
+i Slice8: recipe
+✓ Slice8: recipe
+i Slice8: recipe 11/21, model 1/2
+i Slice3: recipe
+✓ Slice8: recipe 11/21, model 1/2
+i Slice8: recipe 11/21, model 1/2 (predictions)
+✓ Slice3: recipe
+i Slice3: recipe 11/21, model 1/2
+✓ Slice3: recipe 11/21, model 1/2
+i Slice3: recipe 11/21, model 1/2 (predictions)
+i Slice6: recipe
+✓ Slice6: recipe
+i Slice6: recipe 11/21, model 1/2
+✓ Slice6: recipe 11/21, model 1/2
+i Slice6: recipe 11/21, model 1/2 (predictions)
+i Slice2: recipe
+✓ Slice2: recipe
+i Slice2: recipe 11/21, model 1/2
+✓ Slice2: recipe 11/21, model 1/2
+i Slice2: recipe 11/21, model 1/2 (predictions)
+i Slice7: recipe
+✓ Slice7: recipe
+i Slice7: recipe 11/21, model 1/2
+✓ Slice7: recipe 11/21, model 1/2
+i Slice7: recipe 11/21, model 1/2 (predictions)
+i Slice4: recipe 11/21, model 2/2
+✓ Slice4: recipe 11/21, model 2/2
+i Slice4: recipe 11/21, model 2/2 (predictions)
+i Slice5: recipe 11/21, model 2/2
+✓ Slice5: recipe 11/21, model 2/2
+i Slice5: recipe 11/21, model 2/2 (predictions)
+i Slice1: recipe 11/21, model 2/2
+✓ Slice1: recipe 11/21, model 2/2
+i Slice1: recipe 11/21, model 2/2 (predictions)
+i Slice3: recipe 11/21, model 2/2
+i Slice8: recipe 11/21, model 2/2
+✓ Slice3: recipe 11/21, model 2/2
+i Slice3: recipe 11/21, model 2/2 (predictions)
+✓ Slice8: recipe 11/21, model 2/2
+i Slice8: recipe 11/21, model 2/2 (predictions)
+i Slice6: recipe 11/21, model 2/2
+i Slice2: recipe 11/21, model 2/2
+✓ Slice6: recipe 11/21, model 2/2
+i Slice6: recipe 11/21, model 2/2 (predictions)
+✓ Slice2: recipe 11/21, model 2/2
+i Slice2: recipe 11/21, model 2/2 (predictions)
+i Slice7: recipe 11/21, model 2/2
+✓ Slice7: recipe 11/21, model 2/2
+i Slice7: recipe 11/21, model 2/2 (predictions)
+i Slice5: recipe
+✓ Slice5: recipe
+i Slice5: recipe 12/21, model 1/2
+✓ Slice5: recipe 12/21, model 1/2
+i Slice5: recipe 12/21, model 1/2 (predictions)
+i Slice4: recipe
+✓ Slice4: recipe
+i Slice4: recipe 12/21, model 1/2
+✓ Slice4: recipe 12/21, model 1/2
+i Slice4: recipe 12/21, model 1/2 (predictions)
+i Slice1: recipe
+✓ Slice1: recipe
+i Slice1: recipe 12/21, model 1/2
+✓ Slice1: recipe 12/21, model 1/2
+i Slice1: recipe 12/21, model 1/2 (predictions)
+i Slice8: recipe
+✓ Slice8: recipe
+i Slice8: recipe 12/21, model 1/2
+✓ Slice8: recipe 12/21, model 1/2
+i Slice8: recipe 12/21, model 1/2 (predictions)
+i Slice3: recipe
+✓ Slice3: recipe
+i Slice3: recipe 12/21, model 1/2
+✓ Slice3: recipe 12/21, model 1/2
+i Slice3: recipe 12/21, model 1/2 (predictions)
+i Slice6: recipe
+✓ Slice6: recipe
+i Slice6: recipe 12/21, model 1/2
+✓ Slice6: recipe 12/21, model 1/2
+i Slice6: recipe 12/21, model 1/2 (predictions)
+i Slice2: recipe
+i Slice7: recipe
+✓ Slice2: recipe
+i Slice2: recipe 12/21, model 1/2
+✓ Slice7: recipe
+i Slice7: recipe 12/21, model 1/2
+✓ Slice2: recipe 12/21, model 1/2
+i Slice2: recipe 12/21, model 1/2 (predictions)
+✓ Slice7: recipe 12/21, model 1/2
+i Slice7: recipe 12/21, model 1/2 (predictions)
+i Slice5: recipe 12/21, model 2/2
+i Slice4: recipe 12/21, model 2/2
+✓ Slice5: recipe 12/21, model 2/2
+i Slice5: recipe 12/21, model 2/2 (predictions)
+✓ Slice4: recipe 12/21, model 2/2
+i Slice4: recipe 12/21, model 2/2 (predictions)
+i Slice1: recipe 12/21, model 2/2
+✓ Slice1: recipe 12/21, model 2/2
+i Slice1: recipe 12/21, model 2/2 (predictions)
+i Slice8: recipe 12/21, model 2/2
+✓ Slice8: recipe 12/21, model 2/2
+i Slice8: recipe 12/21, model 2/2 (predictions)
+i Slice3: recipe 12/21, model 2/2
+✓ Slice3: recipe 12/21, model 2/2
+i Slice3: recipe 12/21, model 2/2 (predictions)
+i Slice6: recipe 12/21, model 2/2
+✓ Slice6: recipe 12/21, model 2/2
+i Slice6: recipe 12/21, model 2/2 (predictions)
+i Slice2: recipe 12/21, model 2/2
+i Slice7: recipe 12/21, model 2/2
+✓ Slice7: recipe 12/21, model 2/2
+i Slice7: recipe 12/21, model 2/2 (predictions)
+✓ Slice2: recipe 12/21, model 2/2
+i Slice2: recipe 12/21, model 2/2 (predictions)
+i Slice4: recipe
+✓ Slice4: recipe
+i Slice4: recipe 13/21, model 1/2
+✓ Slice4: recipe 13/21, model 1/2
+i Slice4: recipe 13/21, model 1/2 (predictions)
+i Slice5: recipe
+✓ Slice5: recipe
+i Slice5: recipe 13/21, model 1/2
+✓ Slice5: recipe 13/21, model 1/2
+i Slice5: recipe 13/21, model 1/2 (predictions)
+i Slice1: recipe
+✓ Slice1: recipe
+i Slice1: recipe 13/21, model 1/2
+✓ Slice1: recipe 13/21, model 1/2
+i Slice1: recipe 13/21, model 1/2 (predictions)
+i Slice8: recipe
+✓ Slice8: recipe
+i Slice8: recipe 13/21, model 1/2
+✓ Slice8: recipe 13/21, model 1/2
+i Slice8: recipe 13/21, model 1/2 (predictions)
+i Slice3: recipe
+✓ Slice3: recipe
+i Slice3: recipe 13/21, model 1/2
+✓ Slice3: recipe 13/21, model 1/2
+i Slice3: recipe 13/21, model 1/2 (predictions)
+i Slice6: recipe
+✓ Slice6: recipe
+i Slice6: recipe 13/21, model 1/2
+✓ Slice6: recipe 13/21, model 1/2
+i Slice6: recipe 13/21, model 1/2 (predictions)
+i Slice2: recipe
+✓ Slice2: recipe
+i Slice2: recipe 13/21, model 1/2
+✓ Slice2: recipe 13/21, model 1/2
+i Slice2: recipe 13/21, model 1/2 (predictions)
+i Slice7: recipe
+✓ Slice7: recipe
+i Slice7: recipe 13/21, model 1/2
+✓ Slice7: recipe 13/21, model 1/2
+i Slice7: recipe 13/21, model 1/2 (predictions)
+i Slice4: recipe 13/21, model 2/2
+✓ Slice4: recipe 13/21, model 2/2
+i Slice4: recipe 13/21, model 2/2 (predictions)
+i Slice5: recipe 13/21, model 2/2
+i Slice1: recipe 13/21, model 2/2
+✓ Slice5: recipe 13/21, model 2/2
+i Slice5: recipe 13/21, model 2/2 (predictions)
+✓ Slice1: recipe 13/21, model 2/2
+i Slice1: recipe 13/21, model 2/2 (predictions)
+i Slice8: recipe 13/21, model 2/2
+✓ Slice8: recipe 13/21, model 2/2
+i Slice8: recipe 13/21, model 2/2 (predictions)
+i Slice3: recipe 13/21, model 2/2
+✓ Slice3: recipe 13/21, model 2/2
+i Slice3: recipe 13/21, model 2/2 (predictions)
+i Slice6: recipe 13/21, model 2/2
+✓ Slice6: recipe 13/21, model 2/2
+i Slice6: recipe 13/21, model 2/2 (predictions)
+i Slice2: recipe 13/21, model 2/2
+✓ Slice2: recipe 13/21, model 2/2
+i Slice2: recipe 13/21, model 2/2 (predictions)
+i Slice7: recipe 13/21, model 2/2
+✓ Slice7: recipe 13/21, model 2/2
+i Slice7: recipe 13/21, model 2/2 (predictions)
+i Slice4: recipe
+✓ Slice4: recipe
+i Slice4: recipe 14/21, model 1/2
+✓ Slice4: recipe 14/21, model 1/2
+i Slice4: recipe 14/21, model 1/2 (predictions)
+i Slice5: recipe
+✓ Slice5: recipe
+i Slice5: recipe 14/21, model 1/2
+✓ Slice5: recipe 14/21, model 1/2
+i Slice5: recipe 14/21, model 1/2 (predictions)
+i Slice1: recipe
+✓ Slice1: recipe
+i Slice1: recipe 14/21, model 1/2
+✓ Slice1: recipe 14/21, model 1/2
+i Slice1: recipe 14/21, model 1/2 (predictions)
+i Slice8: recipe
+✓ Slice8: recipe
+i Slice8: recipe 14/21, model 1/2
+✓ Slice8: recipe 14/21, model 1/2
+i Slice8: recipe 14/21, model 1/2 (predictions)
+i Slice6: recipe
+✓ Slice6: recipe
+i Slice6: recipe 14/21, model 1/2
+✓ Slice6: recipe 14/21, model 1/2
+i Slice6: recipe 14/21, model 1/2 (predictions)
+i Slice3: recipe
+✓ Slice3: recipe
+i Slice3: recipe 14/21, model 1/2
+✓ Slice3: recipe 14/21, model 1/2
+i Slice3: recipe 14/21, model 1/2 (predictions)
+i Slice2: recipe
+✓ Slice2: recipe
+i Slice2: recipe 14/21, model 1/2
+✓ Slice2: recipe 14/21, model 1/2
+i Slice2: recipe 14/21, model 1/2 (predictions)
+i Slice7: recipe
+✓ Slice7: recipe
+i Slice7: recipe 14/21, model 1/2
+✓ Slice7: recipe 14/21, model 1/2
+i Slice7: recipe 14/21, model 1/2 (predictions)
+i Slice4: recipe 14/21, model 2/2
+✓ Slice4: recipe 14/21, model 2/2
+i Slice4: recipe 14/21, model 2/2 (predictions)
+i Slice5: recipe 14/21, model 2/2
+i Slice1: recipe 14/21, model 2/2
+✓ Slice5: recipe 14/21, model 2/2
+i Slice5: recipe 14/21, model 2/2 (predictions)
+✓ Slice1: recipe 14/21, model 2/2
+i Slice1: recipe 14/21, model 2/2 (predictions)
+i Slice8: recipe 14/21, model 2/2
+✓ Slice8: recipe 14/21, model 2/2
+i Slice8: recipe 14/21, model 2/2 (predictions)
+i Slice6: recipe 14/21, model 2/2
+✓ Slice6: recipe 14/21, model 2/2
+i Slice6: recipe 14/21, model 2/2 (predictions)
+i Slice3: recipe 14/21, model 2/2
+✓ Slice3: recipe 14/21, model 2/2
+i Slice3: recipe 14/21, model 2/2 (predictions)
+i Slice2: recipe 14/21, model 2/2
+✓ Slice2: recipe 14/21, model 2/2
+i Slice2: recipe 14/21, model 2/2 (predictions)
+i Slice7: recipe 14/21, model 2/2
+✓ Slice7: recipe 14/21, model 2/2
+i Slice7: recipe 14/21, model 2/2 (predictions)
+i Slice4: recipe
+✓ Slice4: recipe
+i Slice4: recipe 15/21, model 1/2
+✓ Slice4: recipe 15/21, model 1/2
+i Slice4: recipe 15/21, model 1/2 (predictions)
+i Slice5: recipe
+✓ Slice5: recipe
+i Slice5: recipe 15/21, model 1/2
+✓ Slice5: recipe 15/21, model 1/2
+i Slice5: recipe 15/21, model 1/2 (predictions)
+i Slice1: recipe
+✓ Slice1: recipe
+i Slice1: recipe 15/21, model 1/2
+✓ Slice1: recipe 15/21, model 1/2
+i Slice1: recipe 15/21, model 1/2 (predictions)
+i Slice8: recipe
+✓ Slice8: recipe
+i Slice8: recipe 15/21, model 1/2
+✓ Slice8: recipe 15/21, model 1/2
+i Slice8: recipe 15/21, model 1/2 (predictions)
+i Slice6: recipe
+✓ Slice6: recipe
+i Slice6: recipe 15/21, model 1/2
+i Slice3: recipe
+✓ Slice3: recipe
+i Slice3: recipe 15/21, model 1/2
+✓ Slice6: recipe 15/21, model 1/2
+i Slice6: recipe 15/21, model 1/2 (predictions)
+✓ Slice3: recipe 15/21, model 1/2
+i Slice3: recipe 15/21, model 1/2 (predictions)
+i Slice2: recipe
+✓ Slice2: recipe
+i Slice2: recipe 15/21, model 1/2
+✓ Slice2: recipe 15/21, model 1/2
+i Slice2: recipe 15/21, model 1/2 (predictions)
+i Slice7: recipe
+✓ Slice7: recipe
+i Slice7: recipe 15/21, model 1/2
+✓ Slice7: recipe 15/21, model 1/2
+i Slice7: recipe 15/21, model 1/2 (predictions)
+i Slice4: recipe 15/21, model 2/2
+✓ Slice4: recipe 15/21, model 2/2
+i Slice4: recipe 15/21, model 2/2 (predictions)
+i Slice5: recipe 15/21, model 2/2
+✓ Slice5: recipe 15/21, model 2/2
+i Slice5: recipe 15/21, model 2/2 (predictions)
+i Slice1: recipe 15/21, model 2/2
+✓ Slice1: recipe 15/21, model 2/2
+i Slice1: recipe 15/21, model 2/2 (predictions)
+i Slice8: recipe 15/21, model 2/2
+✓ Slice8: recipe 15/21, model 2/2
+i Slice8: recipe 15/21, model 2/2 (predictions)
+i Slice3: recipe 15/21, model 2/2
+i Slice6: recipe 15/21, model 2/2
+✓ Slice6: recipe 15/21, model 2/2
+i Slice6: recipe 15/21, model 2/2 (predictions)
+✓ Slice3: recipe 15/21, model 2/2
+i Slice3: recipe 15/21, model 2/2 (predictions)
+i Slice2: recipe 15/21, model 2/2
+i Slice7: recipe 15/21, model 2/2
+✓ Slice2: recipe 15/21, model 2/2
+i Slice2: recipe 15/21, model 2/2 (predictions)
+✓ Slice7: recipe 15/21, model 2/2
+i Slice7: recipe 15/21, model 2/2 (predictions)
+i Slice4: recipe
+✓ Slice4: recipe
+i Slice4: recipe 16/21, model 1/2
+✓ Slice4: recipe 16/21, model 1/2
+i Slice4: recipe 16/21, model 1/2 (predictions)
+i Slice1: recipe
+i Slice5: recipe
+✓ Slice1: recipe
+i Slice1: recipe 16/21, model 1/2
+✓ Slice5: recipe
+i Slice5: recipe 16/21, model 1/2
+✓ Slice5: recipe 16/21, model 1/2
+i Slice5: recipe 16/21, model 1/2 (predictions)
+✓ Slice1: recipe 16/21, model 1/2
+i Slice1: recipe 16/21, model 1/2 (predictions)
+i Slice8: recipe
+✓ Slice8: recipe
+i Slice8: recipe 16/21, model 1/2
+✓ Slice8: recipe 16/21, model 1/2
+i Slice8: recipe 16/21, model 1/2 (predictions)
+i Slice6: recipe
+✓ Slice6: recipe
+i Slice6: recipe 16/21, model 1/2
+i Slice3: recipe
+✓ Slice3: recipe
+i Slice3: recipe 16/21, model 1/2
+✓ Slice6: recipe 16/21, model 1/2
+i Slice6: recipe 16/21, model 1/2 (predictions)
+✓ Slice3: recipe 16/21, model 1/2
+i Slice3: recipe 16/21, model 1/2 (predictions)
+i Slice7: recipe
+✓ Slice7: recipe
+i Slice7: recipe 16/21, model 1/2
+i Slice2: recipe
+✓ Slice2: recipe
+i Slice2: recipe 16/21, model 1/2
+✓ Slice7: recipe 16/21, model 1/2
+i Slice7: recipe 16/21, model 1/2 (predictions)
+✓ Slice2: recipe 16/21, model 1/2
+i Slice2: recipe 16/21, model 1/2 (predictions)
+i Slice4: recipe 16/21, model 2/2
+✓ Slice4: recipe 16/21, model 2/2
+i Slice4: recipe 16/21, model 2/2 (predictions)
+i Slice1: recipe 16/21, model 2/2
+i Slice5: recipe 16/21, model 2/2
+✓ Slice1: recipe 16/21, model 2/2
+i Slice1: recipe 16/21, model 2/2 (predictions)
+✓ Slice5: recipe 16/21, model 2/2
+i Slice5: recipe 16/21, model 2/2 (predictions)
+i Slice8: recipe 16/21, model 2/2
+✓ Slice8: recipe 16/21, model 2/2
+i Slice8: recipe 16/21, model 2/2 (predictions)
+i Slice3: recipe 16/21, model 2/2
+i Slice6: recipe 16/21, model 2/2
+✓ Slice6: recipe 16/21, model 2/2
+i Slice6: recipe 16/21, model 2/2 (predictions)
+✓ Slice3: recipe 16/21, model 2/2
+i Slice3: recipe 16/21, model 2/2 (predictions)
+i Slice7: recipe 16/21, model 2/2
+i Slice2: recipe 16/21, model 2/2
+✓ Slice7: recipe 16/21, model 2/2
+i Slice7: recipe 16/21, model 2/2 (predictions)
+✓ Slice2: recipe 16/21, model 2/2
+i Slice2: recipe 16/21, model 2/2 (predictions)
+i Slice4: recipe
+✓ Slice4: recipe
+i Slice4: recipe 17/21, model 1/2
+✓ Slice4: recipe 17/21, model 1/2
+i Slice4: recipe 17/21, model 1/2 (predictions)
+i Slice1: recipe
+i Slice5: recipe
+✓ Slice1: recipe
+i Slice1: recipe 17/21, model 1/2
+✓ Slice5: recipe
+i Slice5: recipe 17/21, model 1/2
+✓ Slice5: recipe 17/21, model 1/2
+✓ Slice1: recipe 17/21, model 1/2
+i Slice5: recipe 17/21, model 1/2 (predictions)
+i Slice1: recipe 17/21, model 1/2 (predictions)
+i Slice8: recipe
+✓ Slice8: recipe
+i Slice8: recipe 17/21, model 1/2
+✓ Slice8: recipe 17/21, model 1/2
+i Slice8: recipe 17/21, model 1/2 (predictions)
+i Slice6: recipe
+i Slice3: recipe
+✓ Slice6: recipe
+✓ Slice3: recipe
+i Slice6: recipe 17/21, model 1/2
+i Slice3: recipe 17/21, model 1/2
+✓ Slice3: recipe 17/21, model 1/2
+i Slice3: recipe 17/21, model 1/2 (predictions)
+✓ Slice6: recipe 17/21, model 1/2
+i Slice6: recipe 17/21, model 1/2 (predictions)
+i Slice7: recipe
+✓ Slice7: recipe
+i Slice7: recipe 17/21, model 1/2
+✓ Slice7: recipe 17/21, model 1/2
+i Slice7: recipe 17/21, model 1/2 (predictions)
+i Slice2: recipe
+✓ Slice2: recipe
+i Slice2: recipe 17/21, model 1/2
+✓ Slice2: recipe 17/21, model 1/2
+i Slice2: recipe 17/21, model 1/2 (predictions)
+i Slice4: recipe 17/21, model 2/2
+✓ Slice4: recipe 17/21, model 2/2
+i Slice4: recipe 17/21, model 2/2 (predictions)
+i Slice5: recipe 17/21, model 2/2
+✓ Slice5: recipe 17/21, model 2/2
+i Slice5: recipe 17/21, model 2/2 (predictions)
+i Slice1: recipe 17/21, model 2/2
+i Slice8: recipe 17/21, model 2/2
+✓ Slice1: recipe 17/21, model 2/2
+i Slice1: recipe 17/21, model 2/2 (predictions)
+✓ Slice8: recipe 17/21, model 2/2
+i Slice8: recipe 17/21, model 2/2 (predictions)
+i Slice3: recipe 17/21, model 2/2
+i Slice6: recipe 17/21, model 2/2
+✓ Slice3: recipe 17/21, model 2/2
+i Slice3: recipe 17/21, model 2/2 (predictions)
+✓ Slice6: recipe 17/21, model 2/2
+i Slice6: recipe 17/21, model 2/2 (predictions)
+i Slice7: recipe 17/21, model 2/2
+i Slice2: recipe 17/21, model 2/2
+✓ Slice7: recipe 17/21, model 2/2
+i Slice7: recipe 17/21, model 2/2 (predictions)
+✓ Slice2: recipe 17/21, model 2/2
+i Slice2: recipe 17/21, model 2/2 (predictions)
+i Slice4: recipe
+✓ Slice4: recipe
+i Slice4: recipe 18/21, model 1/2
+✓ Slice4: recipe 18/21, model 1/2
+i Slice4: recipe 18/21, model 1/2 (predictions)
+i Slice5: recipe
+✓ Slice5: recipe
+i Slice5: recipe 18/21, model 1/2
+✓ Slice5: recipe 18/21, model 1/2
+i Slice5: recipe 18/21, model 1/2 (predictions)
+i Slice1: recipe
+✓ Slice1: recipe
+i Slice1: recipe 18/21, model 1/2
+i Slice8: recipe
+✓ Slice8: recipe
+i Slice8: recipe 18/21, model 1/2
+✓ Slice1: recipe 18/21, model 1/2
+i Slice1: recipe 18/21, model 1/2 (predictions)
+✓ Slice8: recipe 18/21, model 1/2
+i Slice8: recipe 18/21, model 1/2 (predictions)
+i Slice3: recipe
+✓ Slice3: recipe
+i Slice3: recipe 18/21, model 1/2
+i Slice6: recipe
+✓ Slice3: recipe 18/21, model 1/2
+i Slice3: recipe 18/21, model 1/2 (predictions)
+✓ Slice6: recipe
+i Slice6: recipe 18/21, model 1/2
+✓ Slice6: recipe 18/21, model 1/2
+i Slice6: recipe 18/21, model 1/2 (predictions)
+i Slice2: recipe
+✓ Slice2: recipe
+i Slice2: recipe 18/21, model 1/2
+✓ Slice2: recipe 18/21, model 1/2
+i Slice2: recipe 18/21, model 1/2 (predictions)
+i Slice7: recipe
+✓ Slice7: recipe
+i Slice7: recipe 18/21, model 1/2
+✓ Slice7: recipe 18/21, model 1/2
+i Slice7: recipe 18/21, model 1/2 (predictions)
+i Slice4: recipe 18/21, model 2/2
+✓ Slice4: recipe 18/21, model 2/2
+i Slice4: recipe 18/21, model 2/2 (predictions)
+i Slice5: recipe 18/21, model 2/2
+✓ Slice5: recipe 18/21, model 2/2
+i Slice5: recipe 18/21, model 2/2 (predictions)
+i Slice1: recipe 18/21, model 2/2
+i Slice8: recipe 18/21, model 2/2
+✓ Slice1: recipe 18/21, model 2/2
+i Slice1: recipe 18/21, model 2/2 (predictions)
+✓ Slice8: recipe 18/21, model 2/2
+i Slice8: recipe 18/21, model 2/2 (predictions)
+i Slice3: recipe 18/21, model 2/2
+✓ Slice3: recipe 18/21, model 2/2
+i Slice3: recipe 18/21, model 2/2 (predictions)
+i Slice6: recipe 18/21, model 2/2
+✓ Slice6: recipe 18/21, model 2/2
+i Slice6: recipe 18/21, model 2/2 (predictions)
+i Slice2: recipe 18/21, model 2/2
+i Slice7: recipe 18/21, model 2/2
+✓ Slice2: recipe 18/21, model 2/2
+i Slice2: recipe 18/21, model 2/2 (predictions)
+✓ Slice7: recipe 18/21, model 2/2
+i Slice7: recipe 18/21, model 2/2 (predictions)
+i Slice4: recipe
+✓ Slice4: recipe
+i Slice4: recipe 19/21, model 1/2
+i Slice5: recipe
+✓ Slice5: recipe
+i Slice5: recipe 19/21, model 1/2
+✓ Slice4: recipe 19/21, model 1/2
+i Slice4: recipe 19/21, model 1/2 (predictions)
+✓ Slice5: recipe 19/21, model 1/2
+i Slice5: recipe 19/21, model 1/2 (predictions)
+i Slice1: recipe
+✓ Slice1: recipe
+i Slice1: recipe 19/21, model 1/2
+✓ Slice1: recipe 19/21, model 1/2
+i Slice1: recipe 19/21, model 1/2 (predictions)
+i Slice8: recipe
+✓ Slice8: recipe
+i Slice8: recipe 19/21, model 1/2
+✓ Slice8: recipe 19/21, model 1/2
+i Slice8: recipe 19/21, model 1/2 (predictions)
+i Slice3: recipe
+✓ Slice3: recipe
+i Slice3: recipe 19/21, model 1/2
+✓ Slice3: recipe 19/21, model 1/2
+i Slice3: recipe 19/21, model 1/2 (predictions)
+i Slice6: recipe
+✓ Slice6: recipe
+i Slice6: recipe 19/21, model 1/2
+✓ Slice6: recipe 19/21, model 1/2
+i Slice6: recipe 19/21, model 1/2 (predictions)
+i Slice7: recipe
+i Slice2: recipe
+✓ Slice7: recipe
+i Slice7: recipe 19/21, model 1/2
+✓ Slice2: recipe
+i Slice2: recipe 19/21, model 1/2
+✓ Slice2: recipe 19/21, model 1/2
+i Slice2: recipe 19/21, model 1/2 (predictions)
+✓ Slice7: recipe 19/21, model 1/2
+i Slice7: recipe 19/21, model 1/2 (predictions)
+i Slice4: recipe 19/21, model 2/2
+i Slice5: recipe 19/21, model 2/2
+✓ Slice4: recipe 19/21, model 2/2
+i Slice4: recipe 19/21, model 2/2 (predictions)
+✓ Slice5: recipe 19/21, model 2/2
+i Slice5: recipe 19/21, model 2/2 (predictions)
+i Slice1: recipe 19/21, model 2/2
+i Slice8: recipe 19/21, model 2/2
+✓ Slice1: recipe 19/21, model 2/2
+i Slice1: recipe 19/21, model 2/2 (predictions)
+✓ Slice8: recipe 19/21, model 2/2
+i Slice8: recipe 19/21, model 2/2 (predictions)
+i Slice3: recipe 19/21, model 2/2
+i Slice6: recipe 19/21, model 2/2
+✓ Slice3: recipe 19/21, model 2/2
+i Slice3: recipe 19/21, model 2/2 (predictions)
+✓ Slice6: recipe 19/21, model 2/2
+i Slice6: recipe 19/21, model 2/2 (predictions)
+i Slice2: recipe 19/21, model 2/2
+i Slice7: recipe 19/21, model 2/2
+✓ Slice7: recipe 19/21, model 2/2
+i Slice7: recipe 19/21, model 2/2 (predictions)
+✓ Slice2: recipe 19/21, model 2/2
+i Slice2: recipe 19/21, model 2/2 (predictions)
+i Slice4: recipe
+✓ Slice4: recipe
+i Slice4: recipe 20/21, model 1/2
+i Slice5: recipe
+✓ Slice5: recipe
+i Slice5: recipe 20/21, model 1/2
+✓ Slice4: recipe 20/21, model 1/2
+i Slice4: recipe 20/21, model 1/2 (predictions)
+✓ Slice5: recipe 20/21, model 1/2
+i Slice5: recipe 20/21, model 1/2 (predictions)
+i Slice1: recipe
+✓ Slice1: recipe
+i Slice1: recipe 20/21, model 1/2
+✓ Slice1: recipe 20/21, model 1/2
+i Slice1: recipe 20/21, model 1/2 (predictions)
+i Slice8: recipe
+✓ Slice8: recipe
+i Slice8: recipe 20/21, model 1/2
+✓ Slice8: recipe 20/21, model 1/2
+i Slice8: recipe 20/21, model 1/2 (predictions)
+i Slice3: recipe
+✓ Slice3: recipe
+i Slice3: recipe 20/21, model 1/2
+✓ Slice3: recipe 20/21, model 1/2
+i Slice3: recipe 20/21, model 1/2 (predictions)
+i Slice6: recipe
+✓ Slice6: recipe
+i Slice6: recipe 20/21, model 1/2
+✓ Slice6: recipe 20/21, model 1/2
+i Slice6: recipe 20/21, model 1/2 (predictions)
+i Slice7: recipe
+✓ Slice7: recipe
+i Slice7: recipe 20/21, model 1/2
+✓ Slice7: recipe 20/21, model 1/2
+i Slice7: recipe 20/21, model 1/2 (predictions)
+i Slice2: recipe
+✓ Slice2: recipe
+i Slice2: recipe 20/21, model 1/2
+✓ Slice2: recipe 20/21, model 1/2
+i Slice2: recipe 20/21, model 1/2 (predictions)
+i Slice5: recipe 20/21, model 2/2
+i Slice4: recipe 20/21, model 2/2
+✓ Slice5: recipe 20/21, model 2/2
+i Slice5: recipe 20/21, model 2/2 (predictions)
+✓ Slice4: recipe 20/21, model 2/2
+i Slice4: recipe 20/21, model 2/2 (predictions)
+i Slice1: recipe 20/21, model 2/2
+✓ Slice1: recipe 20/21, model 2/2
+i Slice1: recipe 20/21, model 2/2 (predictions)
+i Slice8: recipe 20/21, model 2/2
+✓ Slice8: recipe 20/21, model 2/2
+i Slice8: recipe 20/21, model 2/2 (predictions)
+i Slice3: recipe 20/21, model 2/2
+i Slice6: recipe 20/21, model 2/2
+✓ Slice3: recipe 20/21, model 2/2
+i Slice3: recipe 20/21, model 2/2 (predictions)
+✓ Slice6: recipe 20/21, model 2/2
+i Slice6: recipe 20/21, model 2/2 (predictions)
+i Slice2: recipe 20/21, model 2/2
+i Slice7: recipe 20/21, model 2/2
+✓ Slice2: recipe 20/21, model 2/2
+i Slice2: recipe 20/21, model 2/2 (predictions)
+✓ Slice7: recipe 20/21, model 2/2
+i Slice7: recipe 20/21, model 2/2 (predictions)
+i Slice5: recipe
+✓ Slice5: recipe
+i Slice5: recipe 21/21, model 1/2
+✓ Slice5: recipe 21/21, model 1/2
+i Slice5: recipe 21/21, model 1/2 (predictions)
+i Slice4: recipe
+✓ Slice4: recipe
+i Slice4: recipe 21/21, model 1/2
+✓ Slice4: recipe 21/21, model 1/2
+i Slice4: recipe 21/21, model 1/2 (predictions)
+i Slice1: recipe
+✓ Slice1: recipe
+i Slice1: recipe 21/21, model 1/2
+✓ Slice1: recipe 21/21, model 1/2
+i Slice1: recipe 21/21, model 1/2 (predictions)
+i Slice8: recipe
+✓ Slice8: recipe
+i Slice8: recipe 21/21, model 1/2
+✓ Slice8: recipe 21/21, model 1/2
+i Slice8: recipe 21/21, model 1/2 (predictions)
+i Slice3: recipe
+✓ Slice3: recipe
+i Slice3: recipe 21/21, model 1/2
+✓ Slice3: recipe 21/21, model 1/2
+i Slice3: recipe 21/21, model 1/2 (predictions)
+i Slice6: recipe
+✓ Slice6: recipe
+i Slice6: recipe 21/21, model 1/2
+✓ Slice6: recipe 21/21, model 1/2
+i Slice6: recipe 21/21, model 1/2 (predictions)
+i Slice2: recipe
+✓ Slice2: recipe
+i Slice2: recipe 21/21, model 1/2
+i Slice7: recipe
+✓ Slice7: recipe
+i Slice7: recipe 21/21, model 1/2
+✓ Slice2: recipe 21/21, model 1/2
+i Slice2: recipe 21/21, model 1/2 (predictions)
+✓ Slice7: recipe 21/21, model 1/2
+i Slice7: recipe 21/21, model 1/2 (predictions)
+i Slice5: recipe 21/21, model 2/2
+✓ Slice5: recipe 21/21, model 2/2
+i Slice5: recipe 21/21, model 2/2 (predictions)
+i Slice4: recipe 21/21, model 2/2
+✓ Slice4: recipe 21/21, model 2/2
+i Slice4: recipe 21/21, model 2/2 (predictions)
+i Slice1: recipe 21/21, model 2/2
+i Slice8: recipe 21/21, model 2/2
+✓ Slice1: recipe 21/21, model 2/2
+i Slice1: recipe 21/21, model 2/2 (predictions)
+✓ Slice8: recipe 21/21, model 2/2
+i Slice8: recipe 21/21, model 2/2 (predictions)
+i Slice3: recipe 21/21, model 2/2
+✓ Slice3: recipe 21/21, model 2/2
+i Slice3: recipe 21/21, model 2/2 (predictions)
+i Slice6: recipe 21/21, model 2/2
+✓ Slice6: recipe 21/21, model 2/2
+i Slice6: recipe 21/21, model 2/2 (predictions)
+i Slice2: recipe 21/21, model 2/2
+i Slice7: recipe 21/21, model 2/2
+✓ Slice7: recipe 21/21, model 2/2
+i Slice7: recipe 21/21, model 2/2 (predictions)
+✓ Slice2: recipe 21/21, model 2/2
+i Slice2: recipe 21/21, model 2/2 (predictions)
+> 
+> print(all_res$.notes[[1]])
+# A tibble: 0 x 1
+# … with 1 variable: .notes <chr>
+> 
+> complete_mars_grid <-
++   all_res %>% 
++   collect_metrics() %>% 
++   dplyr::filter(.metric == "rmse")
+> 
+> save(complete_mars_grid, file = "complete_mars_grid.RData")
+> 
+> q("no")
+> proc.time()
+     user    system   elapsed 
+24994.400   347.425  3192.680 

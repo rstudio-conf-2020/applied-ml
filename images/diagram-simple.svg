@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:dc="http://purl.org/dc/elements/1.1/" version="1.1" xmlns:xl="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" viewBox="118.35 -478.65 447.55 233.8" width="447.55" height="233.8">
+  <defs>
+    <font-face font-family="Helvetica Neue" font-size="14" panose-1="2 0 5 3 0 0 0 2 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="951.9958" descent="-212.99744" font-weight="400">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue"/>
+      </font-face-src>
+    </font-face>
+    <font-face font-family="Helvetica Neue" font-size="16" panose-1="2 0 5 3 0 0 0 2 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="951.9958" descent="-212.99744" font-weight="400">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue"/>
+      </font-face-src>
+    </font-face>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -4 10 8" markerWidth="10" markerHeight="8" color="black">
+      <g>
+        <path d="M 8 0 L 0 -3 L 0 3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+  </defs>
+  <metadata> Produced by OmniGraffle 7.10.2 
+    <dc:date>2019-05-24 16:01:34 +0000</dc:date>
+  </metadata>
+  <g id="Canvas_1" stroke-opacity="1" stroke-dasharray="none" fill="none" stroke="none" fill-opacity="1">
+    <title>Canvas 1</title>
+    <g id="Canvas_1: Layer 1">
+      <title>Layer 1</title>
+      <g id="Graphic_8">
+        <ellipse cx="366" cy="-377" rx="47.7500762998155" ry="46.5000743024382" fill="white"/>
+        <ellipse cx="366" cy="-377" rx="47.7500762998155" ry="46.5000743024382" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.3"/>
+        <text transform="translate(346.421 -385.5)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="14" font-weight="400" fill="black" x="0" y="13">Model</tspan>
+        </text>
+      </g>
+      <g id="Graphic_7">
+        <ellipse cx="517.5" cy="-377" rx="47.7500762998155" ry="46.5000743024382" fill="white"/>
+        <ellipse cx="517.5" cy="-377" rx="47.7500762998155" ry="46.5000743024382" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.3"/>
+        <text transform="translate(497.921 -393.392)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="14" font-weight="400" fill="black" x="1.687" y="13">Fitted</tspan>
+          <tspan font-family="Helvetica Neue" font-size="14" font-weight="400" fill="black" x="0" y="29.392">Model</tspan>
+        </text>
+      </g>
+      <g id="Graphic_6">
+        <ellipse cx="196.25" cy="-431.5" rx="77.2501234379215" ry="46.5000743024382" fill="white"/>
+        <ellipse cx="196.25" cy="-431.5" rx="77.2501234379215" ry="46.5000743024382" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.3"/>
+        <text transform="translate(139.45 -449.948)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="27.32" y="15">Analysis </tspan>
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="40.056" y="33.448">Data</tspan>
+        </text>
+      </g>
+      <g id="Graphic_5">
+        <path d="M 142.75 -334.5 L 262.25 -334.5 L 262.25 -263.3 C 226.4 -272.2 178.6 -236.6 142.75 -254.4 Z" fill="white"/>
+        <path d="M 142.75 -334.5 L 262.25 -334.5 L 262.25 -263.3 C 226.4 -272.2 178.6 -236.6 142.75 -254.4 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.3"/>
+        <text transform="translate(147.75 -312.898)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="26.454" y="15">Variable </tspan>
+          <tspan font-family="Helvetica Neue" font-size="16" font-weight="400" fill="black" x="4.382" y="33.448">Specifications</tspan>
+        </text>
+      </g>
+      <g id="Line_4">
+        <path d="M 272.0778 -420.65495 C 282.3366 -418.39907 292.76566 -415.7056 302.75 -412.5 C 307.83963 -410.8659 312.5604 -409.1801 316.93338 -407.4718" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Line_3">
+        <path d="M 262.9 -302.66216 C 274.1262 -306.41583 286.02174 -311.25928 297.75 -317.5 C 308.4583 -323.198 317.86306 -329.44137 325.9947 -335.67346" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Line_2">
+        <line x1="414.4" y1="-377" x2="459.2" y2="-377" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+    </g>
+  </g>
+</svg>

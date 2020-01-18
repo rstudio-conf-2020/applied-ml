@@ -1,0 +1,2039 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+  <head>
+    <title>Applied Machine Learning</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Max Kuhn and Davis Vaughan (RStudio)" />
+    <meta name="date" content="2020-01-17" />
+    <script src="libs/jquery-1.12.4/jquery.min.js"></script>
+    <script src="libs/elevate-section-attrs-2.0/elevate-section-attrs.js"></script>
+    <link href="libs/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <script src="libs/htmlwidgets-1.5.1/htmlwidgets.js"></script>
+    <link href="libs/leaflet-1.3.1/leaflet.css" rel="stylesheet" />
+    <script src="libs/leaflet-1.3.1/leaflet.js"></script>
+    <link href="libs/leafletfix-1.0.0/leafletfix.css" rel="stylesheet" />
+    <script src="libs/Proj4Leaflet-1.0.1/proj4-compressed.js"></script>
+    <script src="libs/Proj4Leaflet-1.0.1/proj4leaflet.js"></script>
+    <link href="libs/rstudio_leaflet-1.3.1/rstudio_leaflet.css" rel="stylesheet" />
+    <script src="libs/leaflet-binding-2.0.2/leaflet.js"></script>
+    <link href="libs/countdown-0.3.3/countdown.css" rel="stylesheet" />
+    <script src="libs/countdown-0.3.3/countdown.js"></script>
+    <script src="libs/kePrint-0.0.1/kePrint.js"></script>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css" integrity="sha384-oS3vJWv+0UjzBfQzYUhtDYW+Pj2yciDJxpsK1OYPAYjqT085Qq/1cq5FLXAZQ7Ay" crossorigin="anonymous">
+    <link rel="stylesheet" href="assets/css/aml-theme.css" type="text/css" />
+    <link rel="stylesheet" href="assets/css/aml-fonts.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+
+
+class: title-slide, center
+
+&lt;span class="fa-stack fa-4x"&gt;
+  &lt;i class="fa fa-circle fa-stack-2x" style="color: #ffffff;"&gt;&lt;/i&gt;
+  &lt;strong class="fa-stack-1x" style="color:#E7553C;"&gt;5&lt;/strong&gt;
+&lt;/span&gt; 
+
+# Applied Machine Learning
+
+## Regression Models
+
+
+
+
+
+---
+# Loading
+
+.code90[
+
+
+```r
+library(tidymodels)
+```
+
+```
+## Registered S3 method overwritten by 'xts':
+##   method     from
+##   as.zoo.xts zoo
+```
+
+```
+## ── Attaching packages ────────────────────────────────────────────────────────── tidymodels 0.0.4 ──
+```
+
+```
+## ✓ broom     0.5.2          ✓ recipes   0.1.9     
+## ✓ dials     0.0.4          ✓ rsample   0.0.5     
+## ✓ dplyr     0.8.3          ✓ tibble    2.1.3     
+## ✓ ggplot2   3.2.1          ✓ tune      0.0.1     
+## ✓ infer     0.5.1          ✓ workflows 0.1.0     
+## ✓ parsnip   0.0.4.9000     ✓ yardstick 0.0.4     
+## ✓ purrr     0.3.3
+```
+
+```
+## ── Conflicts ───────────────────────────────────────────────────────────── tidymodels_conflicts() ──
+## x dplyr::combine()    masks gridExtra::combine()
+## x purrr::discard()    masks scales::discard()
+## x dplyr::filter()     masks stats::filter()
+## x recipes::fixed()    masks stringr::fixed()
+## x dplyr::group_rows() masks kableExtra::group_rows()
+## x dplyr::lag()        masks stats::lag()
+## x ggplot2::margin()   masks dials::margin()
+## x recipes::step()     masks stats::step()
+## x recipes::yj_trans() masks scales::yj_trans()
+```
+
+]
+
+
+
+---
+
+# Outline
+
+* Example Data
+* Regularized Linear Models
+* Multivariate Adaptive Regression Splines
+* Parallel Processing
+* Bayesian Optimization
+
+---
+
+# Example Data: Train Ridership
+
+These data are used in our [Feature Engineering and Selection](https://bookdown.org/max/FES/chicago-intro.html) book. 
+
+Several years worth of data were assembled to try to predict the daily number of people entering the Clark and Lake elevated ("L") train station in Chicago. 
+
+For predictors, 
+
+* the 14-day lagged ridership at this and other stations (units: thousands of rides/day)
+
+* weather data
+
+* home/away game schedules for Chicago teams
+
+* the date
+
+The data are in `modeldata`. See `?Chicago`. 
+
+---
+
+# L Train Locations &lt;img src="images/dplyr.png" class="title-hex"&gt;
+
+<div id="htmlwidget-001034c216ff95a7ccbd" style="width:100%;height:504px;" class="leaflet html-widget"></div>
+<script type="application/json" data-for="htmlwidget-001034c216ff95a7ccbd">{"x":{"options":{"crs":{"crsClass":"L.CRS.EPSG3857","code":null,"proj4def":null,"projectedBounds":null,"options":{}}},"calls":[{"method":"addTiles","args":["//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",null,null,{"minZoom":0,"maxZoom":18,"tileSize":256,"subdomains":"abc","errorTileUrl":"","tms":false,"noWrap":false,"zoomOffset":0,"zoomReverse":false,"opacity":1,"zIndex":1,"detectRetina":false,"attribution":"&copy; <a href=\"http://openstreetmap.org\">OpenStreetMap<\/a> contributors, <a href=\"http://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA<\/a>"}]},{"method":"addCircleMarkers","args":[[41.870851,41.886848,41.885412,41.878723,42.04771,41.938132,41.878183,41.953775,41.966286,42.008362,41.829353,41.80209,42.038951,41.853732,41.8768,41.885269,41.872108,41.831191,41.884431,41.854517,41.875478,41.984246,41.750419,41.874341,41.88574,42.033456,41.887389,41.77886,41.821732,41.804546,41.903355,41.891665,41.977984,41.875474,41.943744,41.883164,41.874257,42.058282,41.85182,41.875539,41.854109,41.722377,41.888969,41.87592,41.886519,41.891189,41.8837,41.795172,42.05416,41.932732,41.964273,41.952925,41.878153,41.921939,41.85177331,41.909744,41.853751,41.887159,41.90392,41.882023,41.910655,41.918217,41.916157,41.879507,42.041655,41.887163,41.89681,41.780309,41.882695,41.854225,41.98227,41.993664,41.969139,41.853839,41.880703,41.910409,41.875706,41.983507,41.857908,42.027612,41.876862,41.966046,41.990259,41.97766526,42.019063,41.780536,41.873797,41.78661,41.778943,41.799756,41.871574,41.87349,41.768367,41.853206,41.966115,41.929728,41.871551,41.853964,42.073153,41.839234,41.884321,41.809209,41.880745,41.831677,41.84678,41.78013,41.804236,41.885678,41.79542,41.965996,42.015876,41.973453,41.936033,41.925051,41.810318,41.94738,42.063987,41.887293,41.816462,41.970634,41.967901,42.001073,41.943623,41.939751,41.961539,41.875568,41.886988,41.88422,41.983504,41.867405,41.896075,41.947428,41.735372,41.947028,41.896671,41.954521,41.966163,41.874039,41.961756,41.885586,41.884914,41.884809,41.884904,42.02624348,41.853115,41.88322],[-87.776812,-87.803176,-87.725404,-87.63374,-87.683543,-87.712359,-87.629296,-87.654929,-87.678639,-87.665909,-87.680622,-87.618487,-87.751919,-87.724311,-87.631739,-87.666969,-87.791602,-87.630636,-87.626149,-87.675975,-87.688436,-87.838028,-87.625112,-87.70604,-87.627835,-87.679538,-87.76565,-87.663766,-87.621371,-87.684019,-87.666496,-87.628021,-87.658668,-87.649707,-87.663619,-87.62944,-87.817318,-87.683337,-87.745336,-87.640984,-87.694774,-87.624342,-87.633924,-87.659458,-87.744698,-87.647578,-87.6278,-87.618327,-87.68356,-87.653131,-87.657588,-87.729229,-87.627596,-87.69689,-87.75669201,-87.677437,-87.733258,-87.783661,-87.631412,-87.626098,-87.649177,-87.652644,-87.687364,-87.626037,-87.681602,-87.754986,-87.635924,-87.605857,-87.63378,-87.685129,-87.8089,-87.659202,-87.658493,-87.714842,-87.629378,-87.639302,-87.673932,-87.859388,-87.669147,-87.678329,-87.628196,-87.701644,-87.659076,-87.90422307,-87.672892,-87.630952,-87.725663,-87.737875,-87.644244,-87.724493,-87.745154,-87.806961,-87.625724,-87.630968,-87.6941,-87.708541,-87.66953,-87.705408,-87.69073,-87.665317,-87.706155,-87.618826,-87.627696,-87.625826,-87.648088,-87.615546,-87.704406,-87.641782,-87.631157,-87.708821,-87.669092,-87.65853,-87.653266,-87.652866,-87.63094,-87.71906,-87.685617,-87.774135,-87.619021,-87.760892,-87.713065,-87.661061,-87.670907,-87.65338,-87.743574,-87.631722,-87.793783,-87.696234,-87.65884,-87.62659,-87.655214,-87.653626,-87.624717,-87.674642,-87.628176,-87.674868,-87.688502,-87.627479,-87.675047,-87.652193,-87.711327,-87.627813,-87.716523,-87.74722084,-87.626402,-87.626189],3,null,null,{"interactive":true,"className":"","stroke":true,"color":"red","weight":5,"opacity":0.5,"fill":true,"fillColor":"red","fillOpacity":0.2},null,null,["Austin (Blue Line)","Harlem/Lake (Green Line)","Pulaski (Green Line)","Quincy/Wells (Brown, Orange, Purple & Pink Lines)","Davis (Purple Line)","Belmont (Blue Line)","Jackson (Blue Line)","Sheridan (Red Line)","Damen (Brown Line)","Morse (Red Line)","35th/Archer (Orange Line)","51st (Green Line)","Dempster-Skokie  (Yellow Line)","Pulaski (Pink Line)","LaSalle/Van Buren (Brown, Orange, Purple & Pink Lines)","Ashland (Green & Pink Lines)","Oak Park (Blue Line)","Sox-35th (Red Line)","Randolph/Wabash (Brown, Green, Orange, Pink & Purple Lines)","Damen (Pink Line)","Western (Blue Line - Forest Park Branch)","Cumberland (Blue Line)","79th (Red Line)","Kedzie-Homan (Blue Line)","State/Lake (Brown, Green, Orange, Pink & Purple Lines)","Main (Purple Line)","Central (Green Line)","Ashland/63rd (Green Line)","Indiana (Green Line)","Western (Orange Line)","Division (Blue Line)","Grand (Red Line)","Berwyn (Red Line)","UIC-Halsted (Blue Line)","Southport (Brown Line)","Washington (Blue Line)","Forest Park (Blue Line)","Noyes (Purple Line)","Cicero (Pink Line)","Clinton (Blue Line)","California (Pink Line)","95th/Dan Ryan (Red Line)","Merchandise Mart (Brown & Purple Lines)","Racine (Blue Line)","Cicero (Green Line)","Grand (Blue Line)","Washington (Red Line)","Garfield (Green Line)","Foster (Purple Line)","Diversey (Brown & Purple Lines)","Wilson (Red & Purple Lines)","Irving Park (Blue Line)","Jackson (Red Line)","California (Blue Line)","54th/Cermak (Pink Line)","Damen (Blue Line)","Kostner (Pink Line)","Ridgeland (Green Line)","Clark/Division (Red Line)","Madison/Wabash (Brown, Green, Orange, Pink & Purple Lines)","North/Clybourn (Red Line)","Armitage (Brown & Purple Lines)","Western (Blue Line - O'Hare Branch)","Adams/Wabash (Brown, Green, Orange, Pink & Purple Lines)","Dempster (Purple Line)","Laramie (Green Line)","Chicago (Brown & Purple Lines)","Cottage Grove (Green Line)","Washington/Wells (Brown, Orange, Purple & Pink Lines)","Western (Pink Line)","Harlem (Blue Line - O'Hare Branch)","Granville (Red Line)","Lawrence (Red Line)","Central Park (Pink Line)","Monroe (Blue Line)","Sedgwick (Brown & Purple Lines)","Illinois Medical District (Blue Line)","Rosemont (Blue Line)","18th (Pink Line)","South Boulevard (Purple Line)","Harold Washington Library-State/Van Buren (Brown, Orange, Purple & Pink Lines)","Francisco (Brown Line)","Thorndale (Red Line)","O'Hare (Blue Line)","Howard (Red, Purple & Yellow Lines)","63rd (Red Line)","Pulaski (Blue Line)","Midway (Orange Line)","Halsted (Green Line)","Pulaski (Orange Line)","Cicero (Blue Line)","Harlem (Blue Line - Forest Park Branch)","69th (Red Line)","Cermak-Chinatown (Red Line)","Rockwell (Brown Line)","Logan Square (Blue Line)","Polk (Pink Line)","Kedzie (Pink Line)","Linden (Purple Line)","Ashland (Orange Line)","Kedzie (Green Line)","47th (Green Line)","Monroe (Red Line)","35th-Bronzeville-IIT (Green Line)","Halsted (Orange Line)","King Drive (Green Line)","Kedzie (Orange Line)","Clinton (Green & Pink Lines)","Garfield (Red Line)","Kedzie (Brown Line)","Jarvis (Red Line)","Argyle (Red Line)","Wellington (Brown & Purple Lines)","Fullerton (Red, Brown & Purple Lines)","47th (Red Line)","Addison (Blue Line)","Central (Purple Line)","Austin (Green Line)","43rd (Green Line)","Jefferson Park (Blue Line)","Kimball (Brown Line)","Loyola (Red Line)","Paulina (Brown Line)","Belmont (Red, Brown & Purple Lines)","Montrose (Blue Line)","LaSalle (Blue Line)","Oak Park (Green Line)","California (Green Line)","Bryn Mawr (Red Line)","Roosevelt (Red, Orange & Green Lines)","Chicago (Blue Line)","Addison (Red Line)","87th (Red Line)","Addison (Brown Line)","Chicago (Red Line)","Irving Park (Brown Line)","Western (Brown Line)","Harrison (Red Line)","Montrose (Brown Line)","Morgan (Green & Pink Lines)","Homan (Green Line)","Lake (Red Line)","Conservatory (Green Line)","Oakton-Skokie (Yellow Line)","Cermak-McCormick Place (Green Line)","Washington/Wabash (Brown, Green, Orange, Purple & Pink Lines)"],null,null,{"interactive":false,"permanent":false,"direction":"auto","opacity":1,"offset":[0,0],"textsize":"10px","textOnly":false,"className":"","sticky":true},null]},{"method":"addCircleMarkers","args":[41.885737,-87.630886,6,null,null,{"interactive":true,"className":"","stroke":true,"color":"green","weight":5,"opacity":0.5,"fill":true,"fillColor":"green","fillOpacity":0.2},null,null,null,null,null,{"interactive":false,"permanent":false,"direction":"auto","opacity":1,"offset":[0,0],"textsize":"10px","textOnly":false,"className":"","sticky":true},null]}],"limits":{"lat":[41.722377,42.073153],"lng":[-87.90422307,-87.605857]}},"evals":[],"jsHooks":[]}</script>
+
+
+---
+
+# Hands-On: Explore the Data
+
+Take a look at these data for a few minutes and see if you can find any interesting characteristics in the predictors or the outcome.  
+
+```r
+data(Chicago)
+```
+
+<div class="countdown" id="timer_5e2252c1" style="bottom:0;left:1;" data-warnwhen="0">
+<code class="countdown-time"><span class="countdown-digits minutes">10</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">00</span></code>
+</div>
+
+
+---
+
+# How Should Features Be Encoded/Engineered? 
+
+Should the ridership data be transformed? 
+
+How should we encode the date? 
+
+
+---
+
+# A Recipe  &lt;img src="images/recipes.png" class="title-hex"&gt;
+
+.pull-left[
+
+```r
+library(stringr)
+
+# define a few holidays
+
+*us_hol &lt;-
+* timeDate::listHolidays() %&gt;%
+* str_subset("(^US)|(Easter)")
+
+chi_rec &lt;-
+  recipe(ridership ~ ., data = Chicago) 
+```
+]
+.pull-right[
+Define a few holidays from the `timeDate` package to be used later.
+
+
+]
+
+
+---
+
+# A Recipe &lt;img src="images/recipes.png" class="title-hex"&gt;
+
+.pull-left[
+
+```r
+library(stringr)
+
+# define a few holidays
+
+us_hol &lt;- 
+  timeDate::listHolidays() %&gt;% 
+  str_subset("(^US)|(Easter)")
+
+chi_rec &lt;-
+* recipe(ridership ~ ., data = Chicago)
+```
+]
+.pull-right[
+`ridership` at Clark and Lake is the outcome. 
+
+All other columns are predictors. 
+
+]
+
+
+---
+
+# A Recipe &lt;img src="images/recipes.png" class="title-hex"&gt;
+
+.pull-left[
+
+```r
+library(stringr)
+
+# define a few holidays
+
+us_hol &lt;- 
+  timeDate::listHolidays() %&gt;% 
+  str_subset("(^US)|(Easter)")
+
+chi_rec &lt;-
+  recipe(ridership ~ ., data = Chicago) %&gt;%
+* step_holiday(date, holidays = us_hol)
+```
+]
+.pull-right[
+Make indicator variables for the 20 US holidays identified in `us_hol`. 
+]
+
+
+---
+
+# A Recipe &lt;img src="images/recipes.png" class="title-hex"&gt;
+
+.pull-left[
+
+```r
+library(stringr)
+
+# define a few holidays
+
+us_hol &lt;- 
+  timeDate::listHolidays() %&gt;% 
+  str_subset("(^US)|(Easter)")
+
+chi_rec &lt;-
+  recipe(ridership ~ ., data = Chicago) %&gt;%
+  step_holiday(date, holidays = us_hol) %&gt;%
+* step_date(date)
+```
+]
+.pull-right[
+Make factor variables from the `date` column, such as `dow`, `month`, and `year`.
+
+These are not automatically converted to dummy variables. 
+]
+
+
+---
+
+# A Recipe &lt;img src="images/recipes.png" class="title-hex"&gt;
+
+.pull-left[
+
+```r
+library(stringr)
+
+# define a few holidays
+
+us_hol &lt;- 
+  timeDate::listHolidays() %&gt;% 
+  str_subset("(^US)|(Easter)")
+
+chi_rec &lt;-
+  recipe(ridership ~ ., data = Chicago) %&gt;%
+  step_holiday(date, holidays = us_hol) %&gt;%
+  step_date(date) %&gt;%
+* step_rm(date)
+```
+]
+.pull-right[
+We've made all of our date-based predictors, so remove the `date` column from the data. 
+]
+
+
+---
+
+# A Recipe &lt;img src="images/recipes.png" class="title-hex"&gt;
+
+.pull-left[
+
+```r
+library(stringr)
+
+# define a few holidays
+
+us_hol &lt;- 
+  timeDate::listHolidays() %&gt;% 
+  str_subset("(^US)|(Easter)")
+
+chi_rec &lt;-
+  recipe(ridership ~ ., data = Chicago) %&gt;%
+  step_holiday(date, holidays = us_hol) %&gt;%
+  step_date(date) %&gt;%
+  step_rm(date) %&gt;%
+* step_dummy(all_nominal())
+```
+]
+.pull-right[
+Make dummy variables out of all of the factor or character columns in the data. 
+]
+
+
+---
+
+# A Recipe &lt;img src="images/recipes.png" class="title-hex"&gt;
+
+.pull-left[
+
+```r
+library(stringr)
+
+# define a few holidays
+
+us_hol &lt;- 
+  timeDate::listHolidays() %&gt;% 
+  str_subset("(^US)|(Easter)")
+
+chi_rec &lt;-
+  recipe(ridership ~ ., data = Chicago) %&gt;%
+  step_holiday(date, holidays = us_hol) %&gt;%
+  step_date(date) %&gt;%
+  step_rm(date) %&gt;%
+  step_dummy(all_nominal()) %&gt;%
+* step_zv(all_predictors())
+```
+]
+.pull-right[
+In case there are column with only a single unique value (perhaps due to resampling), remove them. 
+]
+
+---
+
+# A Recipe &lt;img src="images/recipes.png" class="title-hex"&gt;
+
+.pull-left[
+
+```r
+library(stringr)
+
+# define a few holidays
+
+us_hol &lt;- 
+  timeDate::listHolidays() %&gt;% 
+  str_subset("(^US)|(Easter)")
+
+chi_rec &lt;-
+  recipe(ridership ~ ., data = Chicago) %&gt;%
+  step_holiday(date, holidays = us_hol) %&gt;%
+  step_date(date) %&gt;%
+  step_rm(date) %&gt;%
+  step_dummy(all_nominal()) %&gt;%
+  step_zv(all_predictors())
+* # step_normalize(one_of(!!stations))
+* # step_pca(one_of(!!stations), num_comp = tune())
+```
+]
+.pull-right[
+The ridership between stations is highly correlated.
+
+If we use a model that would be harded by this, we _could_ extract the principal components for these columns. 
+]
+
+---
+
+# Resampling &lt;img src="images/rsample.png" class="title-hex"&gt;
+
+If your job were to model these data, you would probably take historical data as your training set and use the most recent data as the test set. 
+
+Our resampling scheme will emulate this using [rolling forecasting origin](https://otexts.com/fpp2/accuracy.html) resampling with
+
+* Moving analysis sets of 15 years moving over 28 day periods
+* An assessment set of the most recent 28 days of data
+
+
+```r
+chi_folds &lt;- rolling_origin(Chicago, initial = 364 * 15, assess = 7 * 4, skip = 7 * 4, cumulative = FALSE)
+chi_folds %&gt;% nrow()
+```
+
+```
+## [1] 8
+```
+
+---
+
+# Resampling Graphic
+
+&lt;img src="images/part-5-resample-plot-full-1.png" width="75%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+# Enhance!
+
+&lt;img src="images/part-5-resample-plot-1.svg" width="75%" style="display: block; margin: auto;" /&gt;
+
+
+
+---
+layout: false
+class: inverse, middle, center
+
+# Linear Models
+
+ 
+---
+
+# Linear Regression Analysis
+
+We'll start by fitting linear regression models to these data. 
+
+As a reminder, the "linear" part means that the model is linear in the _parameters_; we can add nonlinear terms to the model (e.g. `x^2` or `log(x)`) without causing issues. 
+
+The most start might be with `lm` and the formula method. 
+
+
+```r
+lm(ridership ~ . - date, data = Chicago)
+```
+
+We know that there are a lot of features that we'd miss out on though (e.g. holidays, day-of-the-week, etc.). 
+
+---
+
+# Potential Issues with Linear Regression
+
+We'll look at the L train data and examine a few different models to illustrate some more complex models and approaches to optimizing them. We'll start with linear models. 
+
+However, some potential issues with linear methods:
+
+* They do not automatically do _feature selection_ and including irrelevant predictors may degrade performance.
+* Linear models are sensitive to situations where the predictors are _highly correlated_ (aka collinearity). This isn't too big of an issue for these data though. 
+
+To mitigate these two scenarios, _regularization_ will be used.  This approach adds a penalty to the regression parameters. 
+
+ * In order to have a large slope in the model, the predictor will need to have a large impact on the model. 
+ 
+There are different types of regularization methods. 
+
+
+---
+
+# Effect of Collinearity
+
+
+As an example of collinearity, our data set has two predictors that have a correlation above 0.95: `Irving_Park` and `Belmont`.
+
+What happens when we fit models with both predictors versus one-at-a-time? 
+
+
+&lt;table class="table" style="margin-left: auto; margin-right: auto;"&gt;
+ &lt;thead&gt;
+&lt;tr&gt;
+&lt;th style="border-bottom:hidden" colspan="1"&gt;&lt;/th&gt;
+&lt;th style="border-bottom:hidden; padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3"&gt;&lt;div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; "&gt;Coefficients&lt;/div&gt;&lt;/th&gt;
+&lt;th style="border-bottom:hidden" colspan="1"&gt;&lt;/th&gt;
+&lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; Term &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; Belmont Only &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; Irving Park Only &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; Both Predictors &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; Variance Inflation &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Irving Park &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; --- &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 4.974 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 4.109 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 26.842 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Belmont &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 4.433 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; --- &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 0.795 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 25.112 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+The coefficients can drastically change depending on what is in the model and their corresponding variances can also be artificially large and may flip signs. 
+
+
+---
+
+# Regularized Linear Regression
+
+Now suppose we want to see if _regularizing_ the regression coefficients will result in better fits. 
+
+The [`glmnet`](https://www.jstatsoft.org/article/view/v033i01) model can be used to build a linear model using L&lt;sub&gt;1&lt;/sub&gt; or L&lt;sub&gt;2&lt;/sub&gt; regularization (or a mixture of the two). 
+
+ * The general formulation minimizes: `\(\sum_{i = 1}^{n} (y_i - \sum_{j = 1}^{p} x_{ij} \beta_j) ^ 2 + penalty\)`.
+ 
+ * An L&lt;sub&gt;1&lt;/sub&gt; penalty (penalty is `\(\lambda_1\sum|\beta_j|\)`) can have the effect of setting coefficients to zero. 
+ 
+ * L&lt;sub&gt;2&lt;/sub&gt; regularization ( `\(\lambda_2\sum\beta_j^2\)` ) is basically ridge regression where the magnitude of the coefficients are dampened to avoid overfitting.
+
+Both methods _shrink_ the model coefficients towards zero at different rates. Important parameters tend to be the furthest away from zero. 
+
+
+---
+
+# glmnet Regularized Linear Regression
+
+For a `glmnet` model, we need to determine the total amount regularization (called `lambda`) and the mixture of L&lt;sub&gt;1&lt;/sub&gt; and L&lt;sub&gt;2&lt;/sub&gt; (called `alpha`). 
+
+* `alpha` = 1  is a _lasso model_ while `alpha` = 0  is _ridge regression_ (aka weight decay).
+
+Predictors require centering/scaling before being used in a `glmnet`, lasso, or ridge regression model. 
+
+Technical bits can be found in [Statistical Learning with Sparsity](https://web.stanford.edu/~hastie/StatLearnSparsity/).
+
+---
+
+# Harmonization of Parameter Names
+
+If you are new to these models, `lambda` and `alpha` are pretty arcane and don't tell you anything about what they do. 
+
+Other packages use different names for these parameters (`reg_param`, `penalty`, `lambda1`, `lambda2`, etc.) so it isn't very friendly. 
+
+The `parsnip` package tries to standardize on less jargony and more self-documenting. We use `penalty` (instead of `lambda`) and `mixture` instead of `alpha`. These will always be the same for models within an engine and between-models too. 
+
+For this problem, we have two tuning parameters:
+
+* `mixture` must be between zero and one. A small grid is used for this parameter.  
+* `penalty` is not as clear-cut. We consider values on the log&lt;sub&gt;10&lt;/sub&gt; scale. Usually values less than one are sufficient but this is not always true. 
+
+ 
+---
+
+# Tuning the Model
+
+Let's once again use grid search with a regular grid to find good values of `penalty` and `mixture`. 
+
+It turns out that evaluating values of `penalty` are _cheaper_ than values of `mixture`. We'll tune a grid of 20 penalty values and 5 mixtures between ridge regression and the lasso. 
+
+
+```r
+glmn_grid &lt;- expand.grid(penalty = 10^seq(-3, -1, length = 20), mixture = (0:5)/5)
+```
+
+The reason that penalties are cheap is that this model simultaneously computes parameter estimates for _all possible penalty values_ (for a fixed mixture). This is the _sub-model trick_. 
+
+Using the grid above, we evaluate 120 models but only fit five. 
+
+
+---
+
+# Tuning the Model &lt;img src="images/tune.png" class="title-hex"&gt;&lt;img src="images/rsample.png" class="title-hex"&gt;&lt;img src="images/recipes.png" class="title-hex"&gt;
+
+
+```r
+# We need to normalize the predictors:
+glmn_rec &lt;- chi_rec %&gt;% step_normalize(all_predictors())
+
+glmn_mod &lt;-
+  linear_reg(penalty = tune(), mixture = tune()) %&gt;% set_engine("glmnet")
+
+# Save the assessment set predictions
+ctrl &lt;- control_grid(save_pred = TRUE)
+
+glmn_tune &lt;-
+  tune_grid(
+    glmn_rec,
+    model = glmn_mod,
+    resamples = chi_folds,
+    grid = glmn_grid,
+    control = ctrl
+  )
+```
+
+
+---
+
+# While We Wait, Can I Interest You in Parallelism? 
+
+.pull-left[
+ 
+There is no real barrier to running these in parallel. 
+
+Can we benefit from splitting the fits up to run on multiple cores?
+
+These speed-ups can be very model- and data-dependent but this pattern generally holds. 
+
+Note that there is little incremental benefit to using more workers than physical cores on the computer. Use `parallel::detectCores(logical = FALSE)`.
+
+(A lot more details can be found in [this blog post](http://appliedpredictivemodeling.com/blog/2018/1/17/parallel-processing))
+
+]
+.pull-right[
+&lt;img src="images/part-5-par-plot-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
+
+In these simulations, we estimated the speed-up by using the sub-model trick to be about _25-fold_. 
+
+]
+
+
+---
+
+# Running in Parallel with {tune}
+
+.pull-left[
+To loop through the models and data sets, `tune` uses the [`foreach`](https://www.rdocumentation.org/packages/foreach) package, which can parallelize `for` loops.
+
+`foreach` has a number of _parallel backends_ which allow various technologies to be used in conjunction with the package.
+
+On CRAN, these are the "`do{X}`" packages, such as
+[`doAzureParallel`](https://github.com/Azure/doAzureParallel), 
+[`doFuture`](https://www.rdocumentation.org/packages/doFuture), [`doMC`](https://www.rdocumentation.org/packages/doMC), 
+[`doMPI`](https://www.rdocumentation.org/packages/doMPI), [`doParallel`](https://www.rdocumentation.org/packages/doParallel), [`doRedis`](https://www.rdocumentation.org/packages/doRedis), and [`doSNOW`](https://www.rdocumentation.org/packages/doSNOW).
+
+For example, `doMC` uses the `multicore` package, which forks processes to split computations (for unix and OS X). `doParallel` can be used for all operating systems.
+]
+.pull-right[
+To use parallel processing in `tune`, no changes are needed when calling `tune_*()`. 
+
+The parallel technology must be _registered_ with `foreach` prior to calling `tune_*()`:
+
+
+```r
+library(doParallel)
+cl &lt;- makeCluster(6)
+registerDoParallel(cl)
+
+# run `tune_grid()`...
+
+stopCluster(cl)
+```
+]
+
+
+
+---
+
+# Plotting the Resampling Profile &lt;img src="images/tune.png" class="title-hex"&gt;&lt;img src="images/ggplot2.png" class="title-hex"&gt;
+
+.code90[
+
+.pull-left[
+
+```r
+rmse_vals &lt;- 
+  collect_metrics(glmn_tune) %&gt;% 
+  filter(.metric == "rmse")
+
+rmse_vals %&gt;% 
+  mutate(mixture = format(mixture)) %&gt;% 
+  ggplot(aes(x = penalty, y = mean, col = mixture)) + 
+  geom_line() + 
+  geom_point() + 
+  scale_x_log10()
+
+# There is `autoplot(glmn_tune)` but the grid 
+# structure works better with the code above.  
+```
+]
+
+]
+
+.pull-right[
+&lt;img src="images/part-5-lr-grid-plot-1.svg" width="95%" style="display: block; margin: auto;" /&gt;
+]
+
+
+---
+
+# Capture the Best Values &lt;img src="images/tune.png" class="title-hex"&gt;
+
+.code90[
+
+.pull-left[
+A pure ridge regression solution (`mixture = 0`) does poorly and the model seems to like a small amount of regularization overall. 
+
+The numerically best results were: 
+
+
+```r
+show_best(glmn_tune, metric = "rmse", maximize = FALSE)
+```
+
+```
+## # A tibble: 5 x 7
+##   penalty mixture .metric .estimator  mean     n std_err
+##     &lt;dbl&gt;   &lt;dbl&gt; &lt;chr&gt;   &lt;chr&gt;      &lt;dbl&gt; &lt;int&gt;   &lt;dbl&gt;
+## 1 0.00162     0.8 rmse    standard    1.15     8  0.0688
+## 2 0.00127     0.8 rmse    standard    1.15     8  0.0680
+## 3 0.001       0.8 rmse    standard    1.15     8  0.0682
+## 4 0.00207     0.8 rmse    standard    1.15     8  0.0699
+## 5 0.00264     0.8 rmse    standard    1.15     8  0.0712
+```
+]
+
+
+.pull-right[
+
+```r
+best_glmn &lt;-
+  select_best(glmn_tune, metric = "rmse", maximize = FALSE)
+best_glmn
+```
+
+```
+## # A tibble: 1 x 2
+##   penalty mixture
+##     &lt;dbl&gt;   &lt;dbl&gt;
+## 1 0.00162     0.8
+```
+]
+
+]
+
+---
+
+# Residual Analysis &lt;img src="images/tune.png" class="title-hex"&gt;
+
+Recall that the `save_pred = TRUE` option was used. That retains the held-out predictions for each resample and sub-model. Those are in a list column called `.predictions`. 
+
+We can use `tidyr::unnest()` to get the results back or use this convenience function:
+
+
+```r
+glmn_pred &lt;- collect_predictions(glmn_tune)
+glmn_pred
+```
+
+```
+## # A tibble: 26,880 x 6
+##    id     .pred  .row penalty mixture ridership
+##    &lt;chr&gt;  &lt;dbl&gt; &lt;int&gt;   &lt;dbl&gt;   &lt;dbl&gt;     &lt;dbl&gt;
+##  1 Slice1  18.8  5461 0.001         0      19.6
+##  2 Slice1  18.8  5461 0.00127       0      19.6
+##  3 Slice1  18.8  5461 0.00162       0      19.6
+##  4 Slice1  18.8  5461 0.00207       0      19.6
+##  5 Slice1  18.8  5461 0.00264       0      19.6
+##  6 Slice1  18.8  5461 0.00336       0      19.6
+##  7 Slice1  18.8  5461 0.00428       0      19.6
+##  8 Slice1  18.8  5461 0.00546       0      19.6
+##  9 Slice1  18.8  5461 0.00695       0      19.6
+## 10 Slice1  18.8  5461 0.00886       0      19.6
+## # … with 26,870 more rows
+```
+
+---
+
+# Observed Versus Predicted Plot &lt;img src="images/tune.png" class="title-hex"&gt;&lt;img src="images/ggplot2.png" class="title-hex"&gt;&lt;img src="images/dplyr.png" class="title-hex"&gt;
+
+.code90[
+
+.pull-left[
+
+```r
+# Keep the best model
+glmn_pred &lt;- 
+  glmn_pred %&gt;% 
+  inner_join(best_glmn, by = c("penalty", "mixture")) 
+
+ggplot(glmn_pred, aes(x = .pred, y = ridership)) + 
+  geom_abline(col = "green") + 
+  geom_point(alpha = .3) + 
+  coord_equal()
+```
+
+] 
+
+]
+.pull-right[
+&lt;img src="images/part-5-lr-pred-plot-1.svg" width="75%" style="display: block; margin: auto;" /&gt;
+]
+
+
+---
+
+# Which training set points had the worst results? &lt;img src="images/ggplot2.png" class="title-hex"&gt;&lt;img src="images/dplyr.png" class="title-hex"&gt;
+
+.code90[
+
+.pull-left[
+
+
+```r
+large_resid &lt;- 
+  glmn_pred %&gt;% 
+  mutate(resid = ridership - .pred) %&gt;% 
+  arrange(desc(abs(resid))) %&gt;% 
+  slice(1:4)
+
+library(lubridate)
+Chicago %&gt;% 
+  slice(large_resid$.row) %&gt;% 
+  select(date) %&gt;% 
+  mutate(day = wday(date, label = TRUE)) %&gt;% 
+  bind_cols(large_resid)
+```
+
+```
+## # A tibble: 4 x 9
+##   date       day   id     .pred  .row penalty mixture ridership resid
+##   &lt;date&gt;     &lt;ord&gt; &lt;chr&gt;  &lt;dbl&gt; &lt;int&gt;   &lt;dbl&gt;   &lt;dbl&gt;     &lt;dbl&gt; &lt;dbl&gt;
+## 1 2016-07-04 Mon   Slice7 11.2   5643 0.00162     0.8      5.92 -5.26
+## 2 2016-03-12 Sat   Slice3  7.59  5529 0.00162     0.8     12.4   4.80
+## 3 2016-06-26 Sun   Slice7  7.63  5635 0.00162     0.8      5.07 -2.56
+## 4 2016-04-01 Fri   Slice4 19.8   5549 0.00162     0.8     22.4   2.56
+```
+]
+
+]
+.pull-right[
+We have a July 4th holiday indicator yet still over-predicted. 
+
+For this data set, I end up googling to see why my predictions fail. 
+
+&lt;img src="images/chicago-2016-03-12.png" width="100%" /&gt;
+
+]
+
+
+---
+
+# Creating a Final Model &lt;img src="images/tune.png" class="title-hex"&gt;&lt;img src="images/recipes.png" class="title-hex"&gt;&lt;img src="images/parsnip.png" class="title-hex"&gt;
+
+Let's prep the recipe then fit the final glmnet model with the best parameters:
+
+.pull-left[
+
+
+```r
+glmn_rec_final &lt;- prep(glmn_rec)
+
+glmn_mod_final &lt;- finalize_model(glmn_mod, best_glmn)
+glmn_mod_final
+```
+
+```
+## Linear Regression Model Specification (regression)
+## 
+## Main Arguments:
+##   penalty = 0.00162377673918872
+##   mixture = 0.8
+## 
+## Computational engine: glmnet
+```
+
+```r
+glmn_fit &lt;- 
+  glmn_mod_final %&gt;% 
+  fit(ridership ~ ., data = juice(glmn_rec_final))
+```
+
+]
+.pull-right[
+
+.code90[
+
+
+```r
+glmn_fit
+```
+
+```
+## parsnip model object
+## 
+## Fit time:  35ms 
+## 
+## Call:  glmnet::glmnet(x = as.matrix(x), y = y, family = "gaussian",      alpha = ~0.8) 
+## 
+##    Df   %Dev Lambda
+## 1   0 0.0000 7.2490
+## 2   2 0.1117 6.6050
+## 3   5 0.2175 6.0180
+## 4   5 0.3095 5.4830
+## 5   8 0.3869 4.9960
+## 6   8 0.4523 4.5520
+## 7   9 0.5068 4.1480
+## 8   9 0.5524 3.7800
+## 9   9 0.5904 3.4440
+## 10  9 0.6221 3.1380
+## 11 10 0.6488 2.8590
+## 12 10 0.6711 2.6050
+## 13 10 0.6896 2.3740
+## 14 10 0.7051 2.1630
+## 15 10 0.7180 1.9710
+## 16  9 0.7287 1.7960
+## 17  9 0.7377 1.6360
+## 18  9 0.7452 1.4910
+## 19  8 0.7515 1.3580
+## 20  8 0.7568 1.2380
+## 21  9 0.7622 1.1280
+## 22  9 0.7668 1.0280
+## 23 10 0.7708 0.9362
+## 24 11 0.7763 0.8531
+## 25 14 0.7836 0.7773
+## 26 14 0.7923 0.7082
+## 27 16 0.8002 0.6453
+## 28 16 0.8084 0.5880
+## 29 16 0.8152 0.5357
+## 30 16 0.8209 0.4881
+## 31 16 0.8257 0.4448
+## 32 18 0.8299 0.4053
+## 33 19 0.8341 0.3693
+## 34 20 0.8379 0.3365
+## 35 22 0.8413 0.3066
+## 36 24 0.8451 0.2793
+## 37 25 0.8492 0.2545
+## 38 28 0.8616 0.2319
+## 39 29 0.8740 0.2113
+## 40 30 0.8843 0.1925
+## 41 30 0.8931 0.1754
+## 42 30 0.9008 0.1598
+## 43 31 0.9075 0.1456
+## 44 33 0.9132 0.1327
+## 45 36 0.9180 0.1209
+## 46 37 0.9223 0.1102
+## 47 36 0.9257 0.1004
+## 48 37 0.9288 0.0915
+## 49 37 0.9315 0.0833
+## 50 37 0.9337 0.0759
+## 51 36 0.9354 0.0692
+## 52 37 0.9369 0.0630
+## 53 37 0.9380 0.0574
+## 54 38 0.9391 0.0523
+## 55 37 0.9399 0.0477
+## 56 38 0.9406 0.0435
+## 57 39 0.9414 0.0396
+## 58 38 0.9420 0.0361
+## 59 42 0.9430 0.0329
+## 60 45 0.9438 0.0300
+## 61 46 0.9445 0.0273
+## 62 48 0.9452 0.0249
+## 63 48 0.9457 0.0227
+## 64 54 0.9461 0.0206
+## 65 58 0.9465 0.0188
+## 66 59 0.9470 0.0171
+## 67 60 0.9475 0.0156
+## 68 60 0.9478 0.0142
+## 69 63 0.9481 0.0130
+## 70 64 0.9484 0.0118
+## 71 67 0.9486 0.0108
+## 72 68 0.9488 0.0098
+## 73 68 0.9489 0.0089
+## 74 68 0.9491 0.0081
+## 75 69 0.9492 0.0074
+## 76 71 0.9493 0.0068
+## 77 72 0.9494 0.0062
+## 78 72 0.9495 0.0056
+## 79 73 0.9496 0.0051
+## 80 73 0.9497 0.0047
+## 81 75 0.9497 0.0042
+## 82 74 0.9498 0.0039
+## 83 75 0.9498 0.0035
+## 84 76 0.9498 0.0032
+## 85 76 0.9499 0.0029
+## 86 77 0.9499 0.0027
+## 87 78 0.9499 0.0024
+## 88 77 0.9499 0.0022
+## 89 78 0.9500 0.0020
+## 90 78 0.9500 0.0018
+## 91 80 0.9500 0.0017
+## 92 82 0.9500 0.0015
+## 93 82 0.9500 0.0014
+## 94 82 0.9500 0.0013
+## 95 83 0.9500 0.0012
+```
+
+]
+
+]
+
+
+---
+
+# Using the `glmnet` Object
+.pull-left[
+The `parsnip` object saves the optimized model that was fit to the entire training set in the slot `fit`. 
+
+This can be used as it normally would. 
+
+The plot on the right is creating using
+
+```r
+library(glmnet)
+plot(glmn_fit$fit, xvar = "lambda")
+```
+
+However, **please don't use `predict(object$fit)` **! 
+
+Use the `predict()` method on the object that is produced by `fit`. 
+]
+.pull-right[
+&lt;img src="images/part-5-reg-path-1.svg" width="99%" style="display: block; margin: auto;" /&gt;
+]
+
+Coefs:
+
+```
+##  (Intercept) date_dow_Thu date_dow_Tue date_dow_Wed 
+##    13.619334     4.788952     4.762551     4.761234
+```
+
+---
+
+# A glmnet Coefficient  Plot &lt;img src="images/ggplot2.png" class="title-hex"&gt;&lt;img src="images/dplyr.png" class="title-hex"&gt;&lt;img src="images/broom.png" class="title-hex"&gt;
+
+.code90[
+
+
+```r
+# Get the set of coefficients across penalty values
+tidy_coefs &lt;- 
+  broom::tidy(glmn_fit) %&gt;%
+  dplyr::filter(term != "(Intercept)") %&gt;% 
+  dplyr::select(-step, -dev.ratio)
+
+# Get the lambda closest to tune's optimal choice 
+delta &lt;- abs(tidy_coefs$lambda - best_glmn$penalty)
+lambda_opt &lt;- tidy_coefs$lambda[which.min(delta)]
+
+# Keep the large values
+label_coefs &lt;- 
+  tidy_coefs %&gt;%
+  mutate(abs_estimate = abs(estimate)) %&gt;% 
+  dplyr::filter(abs_estimate &gt;= 1.1) %&gt;% 
+  distinct(term) %&gt;% 
+  inner_join(tidy_coefs, by = "term") %&gt;% 
+  dplyr::filter(lambda == lambda_opt)
+
+# plot the paths and highlight the large values
+tidy_coefs %&gt;%
+  ggplot(aes(x = lambda, y = estimate, group = term, col = term, label = term)) + 
+  geom_vline(xintercept = lambda_opt, lty = 3) +
+  geom_line(alpha = .4) + 
+  theme(legend.position = "none") + 
+  scale_x_log10() + 
+  geom_text_repel(data = label_coefs, aes(x = .005)) 
+```
+
+]
+
+---
+
+# A glmnet Coefficient Plot &lt;img src="images/ggrepl.svg" class="title-hex"&gt;&lt;img src="images/ggplot2.png" class="title-hex"&gt;
+
+&lt;img src="images/part-5-reg-glmnet-path-1.svg" width="90%" style="display: block; margin: auto;" /&gt;
+
+---
+
+# glmnet Variable Importance &lt;img src="images/vip.png" class="title-hex"&gt;&lt;img src="images/ggplot2.png" class="title-hex"&gt;
+
+
+.pull-left[
+
+_Variable importance scores_ are aggregate metrics that try to measure how much each predicted affected the model results. 
+
+These methods are specific to each model and not all models have ways to measure importance. 
+
+For (generalized) linear models, the simplest approach is to look at the absolute value of the regression coefficients (recall that we normalized the predictors).
+
+The `caret` and `vip` packages have general interfaces to compute these measures and plot the results. 
+]
+.pull-right[
+
+```r
+library(vip)
+
+vip(glmn_fit, num_features = 20L, 
+    # Needs to know which coefficients to use
+    lambda = best_glmn$penalty)
+```
+
+&lt;img src="images/part-5-reg-vip-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
+]
+
+
+
+
+---
+
+# What's Next?
+
+The model is pretty simple right now. 
+
+If this level of performance is acceptable, we'd be done. 
+
+If not, more thorough residual analysis would be used to determine if more complex features should be used in the analysis. 
+ 
+There is the choice of making a simple model more complex or trying out a complex model. 
+
+We'll stop here with linear regression and try something else.
+
+
+---
+layout: false
+class: inverse, middle, center
+
+# Multivariate Adaptive Regression Splines
+
+
+---
+
+# Multivariate Adaptive Regression Splines (MARS)
+
+MARS is a nonlinear machine learning model that develops sequential sets of artificial features that are used in linear models (similar to the previous spline discussion). 
+
+The features are "hinge functions" or single knot splines that use the function:
+
+
+```r
+h(x) &lt;- function(x) ifelse(x &gt; 0, x, 0)
+```
+
+The MARS model does a fast search through every predictor and every value of each predictor to find a suitable "split" point for the predictor that results in the best features. 
+
+Suppose a value `x0` is found. The MARS model creates two model terms `h(x - x0)` and `h(x0 - x)` that are added to the intercept column. This creates a type of _segmented regression_. 
+
+These terms are the same as deep learning rectified linear units ([ReLU](https://en.wikipedia.org/wiki/Rectifier_(neural_networks)). 
+
+Let's look at some example data...
+
+
+---
+
+# Simulated Data: `y = 2 * exp(-6 * (x - 1.3)^2) + e`
+
+&lt;img src="images/part-5-mars-sim-1.svg" width="50%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+# MARS Feature Creation -- Iteration #1
+
+.pull-left[
+After searching through these data, the model evaluates all possible values of `x0` to find the best "cut" of the data. It finally chooses a value of 0.5958249. 
+
+To do this, it creates these two new predictors that isolate different regions of `x`. 
+
+If we stop there, these two terms would be added into a linear regression model, yielding:
+
+
+```
+## y =
+##   0.111
+##   - 0.262 * h(0.595825 - x)
+##   +  2.41 * h(x - 0.595825)
+```
+]
+.pull-right[
+&lt;img src="images/part-5-mars-cuts-1.svg" width="90%" style="display: block; margin: auto;" /&gt;
+]
+
+
+---
+
+# Fitted Model with Two Features
+
+&lt;img src="images/part-5-mars-sim-fit-1.svg" width="50%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+# Growing and Pruning
+
+Similar to tree-based models, MARS starts off with a "growing" stage where it keeps adding new features until it reaches a pre-defined limit. 
+
+After the first pair is created, the next cut-point is found using another exhaustive search to see which split of a predictor is best _conditional on the existing features_. 
+
+Once all the features are created, a _pruning phase_ starts where model selection tools are used to eliminate terms that do not contribute meaningfully to the model. 
+
+Generalized cross-validation ([GCV](https://scholar.google.com/scholar?hl=en&amp;as_sdt=0%2C7&amp;q=%22generalized+cross+validation%22&amp;btnG=)) is used to efficiently remove model terms while still providing some protection from overfitting. 
+
+
+---
+
+#  Model Size
+
+There are two approaches:
+
+ 1. Use the internal CGV to prune the model to the best subset size. This is fast but you don't learn much and it may under-select terms. 
+ 
+ 2. Use the external resampling (10-fold CV here) to tune the model as you would any other. 
+
+I usually don't start with GCV. Instead use method #2 above to understand the trends.  
+
+
+---
+
+# The Final Model
+
+.pull-left[
+For the simulated data, the mars model only requires 4 features to model the data (via GCV).
+
+
+```
+## y =
+##   0.0599
+##   - 0.126 * h(0.595825 - x)
+##   +  1.61 * h(x - 0.595825)
+##   +  2.08 * h(x - 0.777082)
+##   -  5.27 * h(x - 1.24441)
+```
+
+The parameters are estimated by added the MARS features into ordinary linear regression models using least squares.  
+
+]
+.pull-right[
+&lt;img src="images/part-5-mars-sim-final-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
+]
+
+
+???
+
+Talk a bit about the process of creating/choosing these particular features. 
+
+Mention bagging here maybe (although it is on a future slide)
+
+Note the coefs have changed due to refitting:
+
+```
+## h(x-0.595825) 
+##      2.408466
+```
+
+```
+## h(x-0.595825) 
+##      1.609755
+```
+
+---
+
+# Additive MARS is segmented regression
+
+
+&lt;img src="images/part-5-mars-seg-1.svg" width="50%" style="display: block; margin: auto;" /&gt;
+
+---
+
+# Aspects of MARS Models
+
+* The model also tests to see if a simple linear term is best (i.e. not split). This is also how dummy variables are evaluated. 
+
+* The model automatically conducts _feature selection_; if a predictor is never used in a split, it is functionally independent of the model. This is really good!
+
+* If an additive model is used (as in the previous example), the functional form of each predictor can be determined (and visualized) independently for each predictor. 
+
+* A _second degree_ MARS model also evaluates interactions of two hinge features (e.g. `h(x0 - x) * h(z - z0)`). This can be useful in isolating regions of bivariate predictor space since it divides two-dimensional space into four quadrants. (see next slide)
+
+
+---
+
+# Second Degree MARS Term Example
+
+&lt;img src="images/part-5-mars-2d-1.svg" width="50%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+# MARS in R
+
+The [`mda`](https://cran.r-project.org/package=mda) package has a `mars` function but the [`earth`](https://cran.r-project.org/package=earth) package is far superior. 
+
+The [`earth()` function](https://www.rdocumentation.org/packages/earth/versions/4.5.1/topics/earth) has both formula and non-formula interfaces. It can also be used with generalized linear models and flexible discriminant analysis. 
+
+To use the nominal growing and GCV pruning process, the syntax is 
+
+
+```r
+earth(y ~ ., data)
+
+# or 
+
+earth(x = x, y = y)
+```
+
+The feature creation process can be controlled using the `nk`, `nprune`, and `pmethod` parameters although this can be [somewhat complex](http://www.milbo.org/doc/earth-notes.pdf). 
+
+There is a variable importance method that tracks the changes in the GCV results as features are added to the model. 
+
+
+---
+
+# MARS in via {parsnip} and {tune}
+
+As with other models, a specification is made for the model. For our data:
+
+
+```r
+# Let MARS decide the number of terms but tune the term dimensions
+mars_mod &lt;-  mars(prod_degree = tune())
+
+# We'll decide via search:
+mars_mod &lt;-  
+  mars(num_terms = tune("mars terms"), prod_degree = tune(), prune_method = "none") %&gt;% 
+  set_engine("earth") %&gt;% 
+  set_mode("regression")
+```
+
+One issue with MARS is that it is based on linear regression. We know that linear regression doesn't do so well when the predictors are highly correlated. 
+
+We'll add to our recipe to de-correlate the data using principal component analysis:
+
+
+```r
+mars_rec &lt;- 
+  chi_rec %&gt;% 
+  step_normalize(one_of(!!stations)) %&gt;% 
+  step_pca(one_of(!!stations), num_comp = tune("pca comps"))
+```
+
+We could use grid search but let's try something else...
+
+
+
+---
+layout: false
+class: inverse, middle, center
+
+#  Segue --- Iterative Search Methods
+
+---
+
+# Grid Versus Iterative Search
+
+.font90[
+
+.pull-left[
+
+Grid search:
+
+* The candidate values need to be pre-defined and don't learn from previous results. 
+
+  * You don't know the best values until all the computations are finished.
+
+* With many parameters, it is difficult to efficiently cover the parameter space.
+
+* Easily optimized via parallel processing and other tricks
+
+
+]
+.pull-right[
+
+Iterative Search:
+
+* _Usually_ builds a probability model to predict better parameters to test based on previous results. 
+
+* More flexibility in how the parameter space is searched. 
+
+* Less opportunities for efficiency optimizations are possible. 
+
+_Any_ search procedure could be used. 
+
+ * [This repo](https://github.com/topepo/Optimization-Methods-for-Tuning-Predictive-Models) shows examples using genetic algorithm, Nelder-Mead simplex search, and other approaches. 
+
+The most popular method is _Bayesian optimization_. We'll focus on this today.  
+]
+
+]
+
+---
+
+# Bayesian Optimization
+
+Takes an initial set of results and uses these to build a model to predict new tuning parameters. 
+
+What makes it Bayesian? 
+
+ * A Gaussian Process model, with some distributional assumptions, is usually the "meta-model".  
+
+This enables mean and variance predictions to be used (more later)
+
+
+---
+
+# How Are the Tuning Data Used
+
+The Gaussian Process uses the previous parameters as _predictors_ and our performance measure as the _outcome_:
+
+&lt;table class="table table-striped table-hover table-bordered" style="width: auto !important; margin-left: auto; margin-right: auto;"&gt;
+ &lt;thead&gt;
+&lt;tr&gt;
+&lt;th style="border-bottom:hidden; padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3"&gt;&lt;div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; "&gt;Tuning parameters are now predictors&lt;/div&gt;&lt;/th&gt;
+&lt;th style="border-bottom:hidden; padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="1"&gt;&lt;div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; "&gt;Now  the outcome&lt;/div&gt;&lt;/th&gt;
+&lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:right;"&gt; mars terms &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; prod_degree &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; pca comps &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; mean &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 71 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 11 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1.203 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 70 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 20 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1.825 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 58 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 7 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1.825 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 15 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 16 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2.623 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:right;"&gt; 88 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1.134 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+
+
+---
+
+# Gaussian Process Model
+
+This approach is often used in the analysis of spatial data and, as parameterized here, has some connections to kernel methods (such as support vector machines). 
+
+ * I recommend Rasmussen and Williams (2006) [(pdf)](http://www.gaussianprocess.org/gpml/chapters/RW.pdf) as a good place to start. 
+
+The model assumes that the model residuals follow a Gaussian distribution and that the model _parameters_ have a joint Gaussian (prior) distribution. 
+
+Based on these assumptions, the predictive (posterior) distribution is also Gaussian
+
+The trick that makes this model so useful here is how the covariance function of the _model inputs_ is defined. 
+
+ * A _kernel_ function is often used that is small when the predictors are close and increases as they diverge. 
+ 
+ * The radial basis function is a good example: `\(K(x_a, x_b) = exp(-0.5 (x_a - x_b)^2)\)`
+
+
+---
+
+# Gaussian Process Model Predictions
+
+Using a nonlinear kernel function enables the GP to create nonlinear regression functions. 
+
+Since this is a Bayesian model, both the mean _and variance_ of model performance can be predicted. 
+
+The predicted variance is usually dominated by the spatial relationships between predictors.
+
+ * Predictions made far away from the training data used for the GP tend to have very large variances.
+
+We'll see examples of this in a minute. 
+
+To start, suppose we have a single numeric tuning parameter and we are trying to maximize R&lt;sup&gt;2&lt;/sup&gt;
+
+Three parameter values were sampled in the middle of the parameter's range. 
+
+
+---
+
+# Initial Grid Results
+
+&lt;img src="images/part-5-gp-init-res-1.svg" width="70%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+# Initial GP Predictions
+
+&lt;img src="images/part-5-gp-init-pred-1.svg" width="70%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+# Selecting New Tuning Parameter Candidates
+
+Using this model, the Bayesian optimization process would search the grid to find the "best" new parameters to evaluate using resampling. 
+
+ * A nonlinear optimization routine or grid search can be used here.
+
+Once the resampling results are obtained, another GP is fit and the process repeats.
+
+How do we select the best parameter? Bayesian optimization introduced the idea of _acquisition functions_.
+
+These functions are used to make trade-offs between exploitation and exploration:
+
+* exploration: search new areas of the parameter space that seem promising
+
+* exploitation: search in the vicinity of the existing best results. 
+
+This is usually a trade-off between mean and variance. 
+
+
+
+---
+
+# Acquisition Function Based on Credible Intervals
+
+
+.pull-left[
+Since we want to maximize R&lt;sup&gt;2&lt;/sup&gt;, this function would seek to maximize the _lower credible bound_. 
+
+The size of the bound controls the trade-off:
+
+`$$bound = \mu(\theta) - C \times \sigma(\theta)$$`
+where `\(\theta\)` is the vector of tuning parameters. 
+
+This isn't very helpful since it often mirrors the mean value. 
+
+]
+.pull-right[
+&lt;img src="images/part-5-gp-ci-1.svg" width="90%" style="display: block; margin: auto;" /&gt;
+
+]
+
+
+
+
+---
+
+# Acquisition Function for Expected Improvement
+
+One of the most popular methods is based on the expected improvement for new parameters, which is relative to the current best results. 
+
+Let's denote the best (mean) performance value was `\(m_{opt}\)` and assume that we are maximizing performance.
+
+The [expected improvement]() is calculated using:
+
+$$
+`\begin{align}
+EI(\theta; m_{opt}) &amp;= \delta(\theta) \Phi\left(\frac{\delta(\theta)}{\sigma(\theta)}\right) + \sigma(\theta) \phi\left(\frac{\delta(\theta)}{\sigma(\theta)}\right) \notag \\
+&amp;\text{where} \notag \\
+ \delta(\theta) &amp;= \mu(\theta) - m_{opt} \notag
+\end{align}`
+$$
+
+The function `\(\Phi(\cdot)\)` is the cumulative standard normal and `\(\phi(\cdot)\)` is the standard normal density. 
+
+
+---
+
+# Acquisition Function for Expected Improvement
+
+&lt;img src="images/part-5-gp-ei-1.svg" width="50%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+# Expected Improvement After 20 Iterations
+
+&lt;img src="images/part-5-gp-ei-20-1.svg" width="50%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+# Exploration using Expected Improvement
+
+The previous equation has a fixed trade-off between the mean and variance. One method to make the search explore more is to define a trade-off value:
+
+$$
+\delta(\theta) = \mu(\theta) - m_{opt} - \tau
+$$
+
+where `\(\tau\)` is the amount of performance that we are willing to sacrifice (in the original units). 
+
+Larger values of `\(\tau\)` will result in more novel candidate values. The value of `\(\tau\)` can change over time so that exploration is the focus initially and exploitation is the goal in later iterations. 
+
+Another approach is to add _uncertainty samples_. This is an idea from the field of [Active Learning](https://scholar.google.com/scholar?hl=en&amp;as_sdt=0%2C7&amp;q=%22active+learning%22+%22uncertainty+sampling%22&amp;btnG=) where we add a new point that is most likely to help the model get better. 
+
+In this context, we sample a candidate value with very large variance. 
+
+
+---
+
+# In Summary
+
+Baysian optimization is an iterative method for searching for reasonable tuning parameters. 
+
+It requires:
+
+ * The range/list of possible parameters (in the transformed scale)
+ 
+ * An initial set of resampled parameter results.
+ 
+ * The resampling scheme. 
+ 
+ * A performance metric to optimize. 
+ 
+ * An acquisition function. 
+ 
+ * The maximum number of iterations.
+ 
+We have a function called `tune_bayes()` for this. 
+
+
+
+---
+
+# Parameter Ranges  &lt;img src="images/recipes.png" class="title-hex"&gt;&lt;img src="images/dials.png" class="title-hex"&gt;
+
+`tune_bayes()` can access the default ranges defined by the `dials` package. 
+
+For illustration, we'll change those ranges by adding the recipe and model to a workflow:
+
+
+```r
+chi_wflow &lt;-
+  workflow() %&gt;%
+  add_recipe(mars_rec) %&gt;%
+  add_model(mars_mod)
+
+chi_set &lt;-
+  parameters(chi_wflow) %&gt;%
+  update(
+    `pca comps`  =  num_comp(c(0, 20)), # 0 comps =&gt; PCA is not used 
+    `mars terms` = num_terms(c(2, 100)))
+```
+
+This is an _optional_ step. 
+
+ 
+
+---
+
+# Running the Optimization  &lt;img src="images/tune.png" class="title-hex"&gt;
+
+
+```r
+library(doMC)
+registerDoMC(cores = 8)
+
+ctrl &lt;- control_bayes(verbose = TRUE, save_pred = TRUE)
+
+# Some defaults:
+#   - Uses expected improvement with no trade-off. See ?exp_improve().
+#   - RMSE is minimized
+set.seed(7891)
+mars_tune &lt;-
+  tune_bayes(
+    chi_wflow,
+    resamples = chi_folds,
+    iter = 25,
+    param_info = chi_set,
+    metrics = metric_set(rmse),
+    initial = 4,
+    control = ctrl
+  )
+```
+
+
+---
+
+# Example of Logging
+
+.font80[
+
+```
+❯  Generating a set of 4 initial parameter results
+✓ Initialization complete
+
+Optimizing rmse using the expected improvement
+
+── Iteration 1 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+i Current best:		rmse=1.29 (@iter 0)
+i Gaussian process model
+✓ Gaussian process model
+i Generating 2877 candidates
+i Predicted candidates
+i mars terms=8, prod_degree=2, pca comps=0
+i Estimating performance
+✓ Estimating performance
+ⓧ Newest results:	rmse=2.379 (+/-0.285)
+
+── Iteration 2 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+&lt;snip&gt;
+
+── Iteration 4 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+i Current best:		rmse=1.29 (@iter 0)
+i Gaussian process model
+✓ Gaussian process model
+i Generating 2915 candidates
+i Predicted candidates
+i mars terms=100, prod_degree=1, pca comps=20
+i Estimating performance
+✓ Estimating performance
+♥ Newest results:	rmse=1.074 (+/-0.0701)
+```
+
+]
+
+---
+
+# Performance over iterations &lt;img src="images/tune.png" class="title-hex"&gt;&lt;img src="images/ggplot2.png" class="title-hex"&gt;
+
+
+```r
+autoplot(mars_tune, type = "performance")
+```
+
+&lt;img src="images/part-5-bo-perf-1.svg" width="65%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+# Performance versus parameters &lt;img src="images/tune.png" class="title-hex"&gt;&lt;img src="images/ggplot2.png" class="title-hex"&gt;
+
+
+```r
+autoplot(mars_tune, type = "marginals")
+```
+
+&lt;img src="images/part-5-bo-param-1.svg" width="85%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+# Parameters over iterations &lt;img src="images/tune.png" class="title-hex"&gt;&lt;img src="images/ggplot2.png" class="title-hex"&gt;
+
+
+```r
+autoplot(mars_tune, type = "parameters")
+```
+
+&lt;img src="images/part-5-bo-param-iter-1.svg" width="95%" style="display: block; margin: auto;" /&gt;
+
+
+
+
+---
+
+# Results &lt;img src="images/tune.png" class="title-hex"&gt;
+
+`collect_metrics()` and `show_best()` work the same here as with grid search:
+
+
+```r
+show_best(mars_tune, maximize = FALSE)
+```
+
+```
+## # A tibble: 5 x 9
+##   `mars terms` prod_degree `pca comps` .iter .metric .estimator  mean     n std_err
+##          &lt;int&gt;       &lt;int&gt;       &lt;int&gt; &lt;dbl&gt; &lt;chr&gt;   &lt;chr&gt;      &lt;dbl&gt; &lt;int&gt;   &lt;dbl&gt;
+## 1           78           1           7     7 rmse    standard    1.13     8  0.0940
+## 2           35           1          18     6 rmse    standard    1.20     8  0.106 
+## 3           38           1          17    14 rmse    standard    1.20     8  0.106 
+## 4           53           1          19     2 rmse    standard    1.20     8  0.106 
+## 5           77           1          19     5 rmse    standard    1.20     8  0.106
+```
+
+For MARS, it has been my observation that decond-degree (i.e. non-additive) models can have better performance but also large variability. 
+
+These results about the same as the `glmnet` model (RMSE of 1.15 versus 1.131). 
+
+
+---
+
+# Performance Compared to Grid Search
+
+For illustration, all 4158 possible sub-models for these three tuning parameters were assessed. We can use these results to see if the Bayesian optimization was effective. 
+
+The initial set of samples (pre-GP model) had a minimum RMSE of 1.825. 
+
+The final search results yielded a model with RMSE = 1.131 which was better than 89.4% of the exhaustive grid search results. 
+
+What were the best results? They mostly used a lot of terms, less than 10 PCA components, and were additive (i.e. `prod_degree = 1`):
+
+.font80[
+
+
+```
+## # A tibble: 6 x 5
+##   `mars terms` prod_degree `pca comps`  RMSE  rank
+##          &lt;int&gt;       &lt;int&gt;       &lt;int&gt; &lt;dbl&gt; &lt;int&gt;
+## 1           24           1           1  1.12     1
+## 2           24           1           2  1.12     2
+## 3           25           1           3  1.12     3
+## 4           29           1           3  1.13    11
+## 5           29           1           4  1.13    12
+## 6           29           1           5  1.13    13
+```
+
+]
+
+
+---
+
+# Performance Compared to Grid Search
+
+&lt;img src="images/part-5-bo-vs-complete-1.svg" width="75%" style="display: block; margin: auto;" /&gt;
+
+
+
+---
+
+# My Thoughts on Bayesian Optimization
+
+.font90[
+
+It is a reasonable approach to optimizing models. 
+ 
+It comes from the deep learning literature. While I believe the literature, I feel like the method is somewhat overfit to their problems.
+
+For example, DL models
+
+  * tend to have far more critical parameters than many other models
+
+  * can't exploit sub-models and parallel process _single models_
+
+  * are created using massive data sets and a single validation set
+
+  * have well defined ranges of tuning parameters (and non-uniform priors on those)
+
+Non DL models/problems tend to have performance profiles that plateaus and less _a priori_ knowledge. 
+
+Also, space-filling designs do a much better job of finding good starting values than regular or random grids. 
+
+]
+
+
+
+---
+
+# Assessment Set Results (Again)  &lt;img src="images/tune.png" class="title-hex"&gt;&lt;img src="images/ggplot2.png" class="title-hex"&gt;&lt;img src="images/dplyr.png" class="title-hex"&gt;
+
+.pull-left[
+
+```r
+mars_pred &lt;- 
+  mars_tune %&gt;% 
+  collect_predictions() %&gt;% 
+  inner_join(
+    select_best(mars_tune, maximize = FALSE), 
+    by = c("mars terms", "prod_degree", "pca comps")
+  ) 
+
+ggplot(mars_pred, aes(x = .pred, y = ridership)) + 
+  geom_abline(col = "green") + 
+  geom_point(alpha = .3) + 
+  coord_equal()
+```
+]
+.pull-right[
+&lt;img src="images/part-5-mars-pred-plot-1.svg" width="75%" style="display: block; margin: auto;" /&gt;
+]
+
+
+---
+
+# Finalizing the recipe and model  &lt;img src="images/tune.png" class="title-hex"&gt;&lt;img src="images/recipes.png" class="title-hex"&gt;&lt;img src="images/parsnip.png" class="title-hex"&gt;
+
+
+```r
+best_mars &lt;- select_best(mars_tune, "rmse", maximize = FALSE)
+best_mars
+```
+
+```
+## # A tibble: 1 x 3
+##   `mars terms` prod_degree `pca comps`
+##          &lt;int&gt;       &lt;int&gt;       &lt;int&gt;
+## 1           78           1           7
+```
+
+```r
+final_mars_wfl &lt;- finalize_workflow(chi_wflow, best_mars)
+
+# No formula is needed since a recipe is embedded in the workflow
+final_mars_wfl &lt;- fit(final_mars_wfl, data = Chicago)
+```
+
+
+
+---
+
+# Variable importance &lt;img src="images/vip.png" class="title-hex"&gt;
+
+.pull-left[
+MARS models can measure importance in a few different ways:
+
+ * The number of times that a column is used in a feature.
+ 
+ * The reduction in error when each term is added to the model (preferred).
+ 
+The `earth` package has a generalized cross-validation (GCV) estimate for the latter metric.   
+]
+.pull-right[
+
+.font90[
+
+
+```r
+final_mars_wfl %&gt;% 
+  # Pull out the model
+  pull_workflow_fit() %&gt;%
+  vip(num_features = 20L, type = "gcv")
+```
+
+&lt;img src="images/part-5-mars-vip-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
+
+]
+
+]
+
+
+
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script src="https://platform.twitter.com/widgets.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "solarized-light",
+"highlightLanguage": "R",
+"highlightLines": true,
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

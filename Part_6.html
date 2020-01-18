@@ -1,0 +1,1984 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+  <head>
+    <title>Applied Machine Learning</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Max Kuhn and Davis Vaughan (RStudio)" />
+    <meta name="date" content="2020-01-17" />
+    <script src="libs/jquery-1.11.3/jquery.min.js"></script>
+    <script src="libs/elevate-section-attrs-2.0/elevate-section-attrs.js"></script>
+    <link href="libs/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <script src="libs/kePrint-0.0.1/kePrint.js"></script>
+    <link href="libs/countdown-0.3.3/countdown.css" rel="stylesheet" />
+    <script src="libs/countdown-0.3.3/countdown.js"></script>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css" integrity="sha384-oS3vJWv+0UjzBfQzYUhtDYW+Pj2yciDJxpsK1OYPAYjqT085Qq/1cq5FLXAZQ7Ay" crossorigin="anonymous">
+    <link rel="stylesheet" href="assets/css/aml-theme.css" type="text/css" />
+    <link rel="stylesheet" href="assets/css/aml-fonts.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+
+
+class: title-slide, center
+
+&lt;span class="fa-stack fa-4x"&gt;
+  &lt;i class="fa fa-circle fa-stack-2x" style="color: #ffffff;"&gt;&lt;/i&gt;
+  &lt;strong class="fa-stack-1x" style="color:#E7553C;"&gt;6&lt;/strong&gt;
+&lt;/span&gt; 
+
+# Applied Machine Learning
+
+## Classification Models
+
+
+
+
+
+
+---
+# Outline
+
+* Performance Measures
+* Amazon Review Data
+* Classification Trees
+* Boosting
+* Extra topics as time allows
+
+
+---
+
+# Load Packages
+
+
+.code60[
+
+```r
+library(tidymodels)
+```
+
+```
+## Registered S3 method overwritten by 'xts':
+##   method     from
+##   as.zoo.xts zoo
+```
+
+```
+## ── Attaching packages ────────────────────────────────────────────────────────── tidymodels 0.0.4 ──
+```
+
+```
+## ✓ broom     0.5.2          ✓ recipes   0.1.9     
+## ✓ dials     0.0.4          ✓ rsample   0.0.5     
+## ✓ dplyr     0.8.3          ✓ tibble    2.1.3     
+## ✓ infer     0.5.1          ✓ tune      0.0.1     
+## ✓ parsnip   0.0.4.9000     ✓ workflows 0.1.0     
+## ✓ purrr     0.3.3          ✓ yardstick 0.0.4
+```
+
+```
+## ── Conflicts ───────────────────────────────────────────────────────────── tidymodels_conflicts() ──
+## x purrr::accumulate()    masks foreach::accumulate()
+## x purrr::discard()       masks scales::discard()
+## x dplyr::filter()        masks stats::filter()
+## x recipes::fixed()       masks stringr::fixed()
+## x dplyr::group_rows()    masks kableExtra::group_rows()
+## x dplyr::ident()         masks dbplyr::ident()
+## x dplyr::lag()           masks stats::lag()
+## x purrr::lift()          masks caret::lift()
+## x dials::margin()        masks ggplot2::margin()
+## x yardstick::precision() masks caret::precision()
+## x dials::prune()         masks rpart::prune()
+## x yardstick::recall()    masks caret::recall()
+## x dplyr::select()        masks MASS::select()
+## x dplyr::sql()           masks dbplyr::sql()
+## x recipes::step()        masks stats::step()
+## x purrr::when()          masks foreach::when()
+## x recipes::yj_trans()    masks scales::yj_trans()
+```
+]
+
+
+
+
+---
+layout: false
+class: inverse, middle, center
+
+# Measuring Performance in Classification
+
+
+---
+
+# Illustrative Example  &lt;img src="images/yardstick.png" class="title-hex"&gt;
+
+`yardstick` contains another test set example in a data frame called `two_class_example`:
+
+
+
+```r
+two_class_example %&gt;% head(4)
+```
+
+```
+##    truth  Class1 Class2 predicted
+## 1 Class2 0.00359  0.996    Class2
+## 2 Class1 0.67862  0.321    Class1
+## 3 Class2 0.11089  0.889    Class2
+## 4 Class1 0.73516  0.265    Class1
+```
+
+Both `truth` and `predicted` are factors with the same levels. The other two columns represent _class probabilities_. 
+
+This reflects that most classification models can generate "hard" and "soft" predictions for models. 
+
+The class predictions are usually created by thresholding some numeric output of the model (e.g. a class probability) or by choosing the largest value.  
+
+
+
+
+---
+
+# Class Prediction Metrics &lt;img src="images/yardstick.png" class="title-hex"&gt;
+
+.pull-left[
+With class predictions, a common summary method is to produce a _confusion matrix_ which is a simple cross-tabulation between the observed and predicted classes:
+
+
+```r
+two_class_example %&gt;% 
+	conf_mat(truth = truth, estimate = predicted)
+```
+
+```
+##           Truth
+## Prediction Class1 Class2
+##     Class1    227     50
+##     Class2     31    192
+```
+
+These can be visualized using [mosaic plots](https://en.wikipedia.org/wiki/Mosaic_plot). 
+
+]
+.pull-right[
+Accuracy is the most obvious metric for characterizing the performance of models.
+
+
+```r
+two_class_example %&gt;% 
+	accuracy(truth = truth, estimate = predicted)
+```
+
+```
+## # A tibble: 1 x 3
+##   .metric  .estimator .estimate
+##   &lt;chr&gt;    &lt;chr&gt;          &lt;dbl&gt;
+## 1 accuracy binary         0.838
+```
+
+However, it suffers when there is a _class imbalance_; suppose 95% of the data have a specific class. 95% accuracy can be achieved by predicting samples to be the majority class.  
+
+There are measures that correct for the natural event rate, such as [Cohen's Kappa](https://en.wikipedia.org/wiki/Cohen%27s_kappa).
+]
+
+
+---
+
+# Two Classes &lt;img src="images/yardstick.png" class="title-hex"&gt;
+
+
+There are a number of specialized metrics that can be used when there are two classes. Usually, one of these classes can be considered the _event of interest_ or the _positive class_. 
+
+One common way to think about performance is to consider false negatives and false positives. 
+
+* The sensitivity is the _true positive rate_ (out of all of the actual positives, how many did you get right?).
+
+* The specificity is the rate of correctly predicted negatives, or 1 - _false positive rate_ (out of all the actual negatives, how many did you get right?). 
+
+From this, assuming that `Class1` is the event of interest: 
+
+ .pull-left[
+
+```
+##           Truth
+## Prediction Class1 Class2
+##     Class1    227     50
+##     Class2     31    192
+```
+]
+.pull-right[
+ sensitivity = 227/(227 + 31)  = 0.88
+
+ specificity = 192/(192 + 50)  = 0.79
+]
+
+
+---
+
+# Conditional and Unconditional Measures &lt;img src="images/yardstick.png" class="title-hex"&gt;
+
+Sensitivity and specificity can be computed from `sens()` and `spec()`, respectively. 
+
+It should be noted that these are _conditional measures_ since we need to know the true outcome. 
+
+The event rate is the _prevalence_ (or the Bayesian _prior_). Sensitivity and specificity are analogous to the _likelihood values_. 
+
+There are _unconditional_ analogs to the _posterior values_ called the positive predictive values and the negative predicted values. 
+
+A variety of other measures are available for two class systems, especially for _information retrieval_.  
+
+One thing to consider: what happens if our **threshold to call a sample an event is not optimal**? 
+
+
+---
+
+# Changing the Probability Threshold &lt;img src="images/yardstick.png" class="title-hex"&gt;
+
+.pull-left[
+For two classes, the 50% cutoff is customary; if the probability of class #1 is &gt;= 50%, they would be labelled as `Class1`. 
+
+
+What happens when you change the cutoff? 
+
+* Increasing it makes it harder to be called `Class1` `\(\Rightarrow\)` fewer predicted events, specificity `\(\uparrow\)`, sensitivity `\(\downarrow\)` 
+  
+
+* Decreasing the cutoff makes it easier to be called `Class1` `\(\Rightarrow\)` more predicted events, specificity `\(\downarrow\)`, sensitivity `\(\uparrow\)`  
+
+With two classes, the **Receiver Operating Characteristic (ROC) curve** can be used to estimate performance using a combination of sensitivity and specificity.  
+
+]
+.pull-right[
+  
+To create the curve, many alternative cutoffs are evaluated. 
+
+For each cutoff, we calculate the sensitivity and specificity.
+
+The ROC curve plots the sensitivity (eg. true positive rate) versus 1 - specificity (eg. the false positive rate).
+  
+The area under the ROC curve is a common metric of performance.  
+]
+ 
+  
+---
+
+# The Receiver Operating Characteristic (ROC) Curve  &lt;img src="images/yardstick.png" class="title-hex"&gt;&lt;img src="images/ggplot2.png" class="title-hex"&gt;&lt;img src="images/dplyr.png" class="title-hex"&gt;
+
+.pull-left[
+
+```r
+roc_obj &lt;- 
+  two_class_example %&gt;% 
+  roc_curve(truth, Class1)
+```
+
+```r
+two_class_example %&gt;% roc_auc(truth, Class1)
+```
+
+```
+## # A tibble: 1 x 3
+##   .metric .estimator .estimate
+##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt;
+## 1 roc_auc binary         0.939
+```
+
+```r
+autoplot(roc_obj) + thm
+```
+]
+.pull-right[
+
+&lt;img src="images/part-6-roc-plot-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
+]
+
+  
+---
+
+# Changing the Threshold 
+
+
+
+&lt;img src="images/part-6-unnamed-chunk-1-1.gif" width="50%" style="display: block; margin: auto;" /&gt;
+
+---
+
+# The Receiver Operating Characteristic (ROC) Curve 
+
+The ROC curve has some major advantages:
+
+ * It can allow models to be optimized for performance before a definitive cutoff is determined.
+ 
+ * It is _robust_ to class imbalances; no matter the event rate, it does a good job at characterizing model performance. 
+ 
+ * The ROC curve can be used to pick an optimal cutoff based on the trade-offs between the types of errors that can occur. 
+
+When there are two classes, it is advisable to focus on the area under the ROC curve instead of sensitivity and specificity. 
+
+Once an acceptable model is determined, a proper cutoff can be determined. 
+
+
+
+---
+layout: false
+class: inverse, middle, center
+
+# Example Data
+
+
+
+---
+
+# Amazon Review Data
+
+These data are from Amazon, who describe it as 
+
+&gt; "This dataset consists of reviews of fine foods from amazon. The data span a period of more than 10 years, including all ~500,000 reviews up to October 2012. Reviews include product and user information, ratings, and a plaintext review."
+
+We will use the text data to predict whether the review have a five-star result or not. 
+
+This will involve some natural language processing methods, which we will walk through.
+
+The data are found in the `modeldata` package
+
+
+```r
+library(modeldata)
+data(small_fine_foods)
+```
+
+
+---
+
+# Feature Engineering 
+
+Most of the work for the features is to extra information from text. 
+
+We will use the basics here but more information can be found in the [_Tidy Text Mining with R_](https://www.tidytextmining.com/).
+
+To do this, we will heavily reply on the `textrecipes` package. 
+ 
+---
+
+# Defining roles &lt;img src="images/recipes.png" class="title-hex"&gt;
+
+.pull-left-a-lot[
+
+.font80[
+
+
+```r
+text_rec &lt;-
+  recipe(score ~ product + review, data = training_data) %&gt;%
+* update_role(product, new_role = "id")
+```
+
+]
+ 
+]
+.pull-right-a-little[
+`product` is used for data splitting (as we'll see in a bit). 
+
+Arguably, it is not a predictor (although some might use it that way). 
+
+We update the role so that it is retained in the recipe but not used as a predictor. 
+]
+
+
+---
+
+# Copying a column &lt;img src="images/recipes.png" class="title-hex"&gt;
+
+.pull-left-a-lot[
+
+.font80[
+
+
+```r
+text_rec &lt;-
+  recipe(score ~ product + review, data = training_data) %&gt;%
+  update_role(product, new_role = "id") %&gt;%
+* step_mutate(review_raw = review)
+```
+
+]
+
+]
+.pull-right-a-little[
+Two of the steps that we'll use will destroy the original predictor. 
+
+We'll use a basic `mutate` to make a temporary copy. 
+]
+
+---
+
+# Initial feature set &lt;img src="images/recipes.png" class="title-hex"&gt;
+
+.pull-left-a-lot[
+
+.font80[
+
+
+```r
+text_rec &lt;-
+  recipe(score ~ product + review, data = training_data) %&gt;%
+  update_role(product, new_role = "id") %&gt;%
+  step_mutate(review_raw = review) %&gt;%
+* step_textfeature(review_raw)
+```
+
+]
+
+]
+.pull-right-a-little[
+A set of numeric predictors are derived from the text. 
+
+Most are counts of text elements (e.g. words, punctuation, etc) 
+]
+
+
+
+---
+
+# Tokenize &lt;img src="images/recipes.png" class="title-hex"&gt;
+
+.pull-left-a-lot[
+
+.font80[
+
+
+```r
+text_rec &lt;-
+  recipe(score ~ product + review, data = training_data) %&gt;%
+  update_role(product, new_role = "id") %&gt;%
+  step_mutate(review_raw = review) %&gt;%
+  step_textfeature(review_raw)  %&gt;%               
+* step_tokenize(review)
+```
+
+]
+
+]
+.pull-right-a-little[
+
+]
+
+
+---
+
+# Remove Stop Words &lt;img src="images/recipes.png" class="title-hex"&gt;
+
+.pull-left-a-lot[
+
+.font80[
+
+
+```r
+text_rec &lt;-
+  recipe(score ~ product + review, data = training_data) %&gt;%
+  update_role(product, new_role = "id") %&gt;%
+  step_mutate(review_raw = review) %&gt;%
+  step_textfeature(review_raw)  %&gt;%               
+  step_tokenize(review)   %&gt;%
+* step_stopwords(review)
+```
+
+]
+
+]
+.pull-right-a-little[
+Stop words are those that occur commonly in text, such as "the", "a", and so on. 
+
+Removing them from text _might_ be a good idea. 
+
+This largely depends on what you are doing with the text. 
+]
+
+
+
+---
+
+# Word stemming &lt;img src="images/recipes.png" class="title-hex"&gt;
+
+.pull-left-a-lot[
+
+.font80[
+
+
+```r
+text_rec &lt;-
+  recipe(score ~ product + review, data = training_data) %&gt;%
+  update_role(product, new_role = "id") %&gt;%
+  step_mutate(review_raw = review) %&gt;%
+  step_textfeature(review_raw) %&gt;%               
+  step_tokenize(review) %&gt;%
+  step_stopwords(review)  %&gt;%
+* step_stem(review)
+```
+
+]
+
+]
+.pull-right-a-little[
+Stemming is a method that uses a common root of a word instead of the original value. 
+
+For example, these 7 words are fairly similar: "teach", "teacher", "teachers", "teaches", "teachable", "teaching", "teachings". 
+
+Stemming would reduce these to 3 unique values: "teach", "teacher", "teachabl".
+
+Like stop word removal, this may or may not be a good idea. 
+]
+
+---
+
+# Feature hashing &lt;img src="images/recipes.png" class="title-hex"&gt;
+
+.pull-left-a-lot[
+
+.font80[
+
+
+```r
+text_rec &lt;-
+  recipe(score ~ product + review, data = training_data) %&gt;%
+  update_role(product, new_role = "id") %&gt;%
+  step_mutate(review_raw = review) %&gt;%
+  step_textfeature(review_raw) %&gt;%               
+  step_tokenize(review) %&gt;%
+  step_stopwords(review)  %&gt;%
+  step_stem(review) %&gt;%
+* step_texthash(review, signed = FALSE, num_terms = 1024)
+```
+
+]
+
+]
+.pull-right-a-little[
+
+.font90[
+
+Feature hashing creates numeric terms from words in a sentence (or some other token) similar to dummy variables. 
+
+However, there are big differences, including: 
+
+* There is no look-up table to consult to make the mapping 
+
+* The placement of the non-zero values in meant to emulate randomness. 
+
+* The new features are computed on the actual words. 
+
+]
+
+]
+
+
+---
+
+# Feature hashing 
+
+.pull-left[
+
+For string "On Time and product looked like it", a sketch of the calculations to make 8 hashed values:
+
+&lt;table class="table" style="margin-left: auto; margin-right: auto;"&gt;
+ &lt;thead&gt;
+  &lt;tr&gt;
+   &lt;th style="text-align:left;"&gt; word &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; hashed integer value &lt;/th&gt;
+   &lt;th style="text-align:right;"&gt; (integer mod 8) + 1 &lt;/th&gt;
+  &lt;/tr&gt;
+ &lt;/thead&gt;
+&lt;tbody&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; On &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; -182693672 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 4 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; Time &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1593484409 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 8 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; and &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; -1079337235 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 8 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; product &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; -979280496 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 6 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; looked &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; -2120797534 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; like &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; -592737581 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 5 &lt;/td&gt;
+  &lt;/tr&gt;
+  &lt;tr&gt;
+   &lt;td style="text-align:left;"&gt; it &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 1278008556 &lt;/td&gt;
+   &lt;td style="text-align:right;"&gt; 2 &lt;/td&gt;
+  &lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+]
+.pull-right[
+Note that multiple words end up going into the same feature column. This is _aliasing_ (statistical term) or a _collision_ (comp sci term).
+
+* We wouldn't be able to distinguish the effect of those two words. 
+
+We can encode this as a simple zero or, as `textrecipes` does, use the count as the value. 
+
+* There are also _signed_ hashes that help avoid collisions. 
+
+Note that no words were mapped to feature columns three or seven. 
+]
+
+
+---
+
+# Optional step: convert binary to factors &lt;img src="images/recipes.png" class="title-hex"&gt;
+
+.pull-left-a-lot[
+
+.font80[
+
+
+```r
+count_to_binary &lt;- function(x) {
+  factor(ifelse(x != 0, "present", "absent"),
+         levels = c("present", "absent"))
+}
+text_rec &lt;-
+  recipe(score ~ product + review, data = training_data) %&gt;%
+  update_role(product, new_role = "id") %&gt;%
+  step_mutate(review_raw = review) %&gt;%
+  step_textfeature(review_raw) %&gt;%               
+  step_tokenize(review) %&gt;%
+  step_stopwords(review)  %&gt;%
+  step_stem(review) %&gt;%
+  step_texthash(review, signed = FALSE, num_terms = 1024) %&gt;%
+* step_mutate_at(starts_with("review_hash"), fn = count_to_binary)
+```
+
+]
+
+]
+.pull-right-a-little[
+
+.font90[
+
+The naive Bayes model will be used on these data. 
+
+It computes probability values from each predictor. 
+
+ - If the predictor is numeric, its statistical density is used. 
+
+ - If categorical, a contingency table is used.  
+
+Since the hash values are really about the presence/absence of words, we should convert then to 2-level factor variables to ensure appropriate calculations. 
+
+]
+
+]
+
+
+---
+
+# Optional step: remove zero-variance predictors &lt;img src="images/recipes.png" class="title-hex"&gt;
+
+.pull-left-a-lot[
+
+.font80[
+
+
+```r
+count_to_binary &lt;- function(x) {
+  factor(ifelse(x != 0, "present", "absent"),
+         levels = c("present", "absent"))
+}
+text_rec &lt;-
+  recipe(score ~ product + review, data = training_data) %&gt;%
+  update_role(product, new_role = "id") %&gt;%
+  step_mutate(review_raw = review) %&gt;%
+  step_textfeature(review_raw) %&gt;%               
+  step_tokenize(review) %&gt;%
+  step_stopwords(review)  %&gt;%
+  step_stem(review) %&gt;%
+  step_texthash(review, signed = FALSE, num_terms = 1024) %&gt;%
+  step_mutate_at(starts_with("review_hash"), fn = count_to_binary) %&gt;% 
+* step_zv(all_predictors())
+```
+
+]
+
+]
+.pull-right-a-little[
+Removing has features that are all zero in the training set increases computational efficiency and may stop model failures. 
+]
+
+---
+
+# Resampling and Analysis Strategy &lt;img src="images/rsample.png" class="title-hex"&gt;
+
+There are enough data here to do a simple 10-fold cross-validation. 
+
+Since there is a class imbalance, we will stratify the splits.
+
+
+
+```r
+set.seed(8935)
+text_folds &lt;- vfold_cv(training_data, strata = "score")
+```
+
+
+---
+layout: false
+class: inverse, middle, center
+
+# Classification Trees
+
+---
+
+# Tree model structure
+
+A classification tree searches through each predictor to find a value of a single variable that best splits the data into two groups. 
+
+For the two resulting groups, the process is repeated until a hierarchical structure (a tree) is created. 
+
+* In effect, trees partition the `\(X\)` space into rectangular sections that assign a single value to samples within the rectangle.
+
+The final structure in the tree is the _terminal node_ and each path through the tree is a _rule_.   
+
+
+.pull-left[
+
+```r
+# Example tree with three terminal nodes
+if (x &gt; 1) {
+     if (y &lt; 3) {
+       class &lt;- "A"
+     } else {
+       class &lt;- "B"
+     }
+} else {
+  class &lt;- "A"
+}
+```
+]
+.pull-right[
+
+```r
+# Same tree, stated as rules
+if (x &gt;  1 &amp; y &lt;   3) class &lt;- "A"
+if (x &gt;  1 &amp; y &gt;=  3) class &lt;- "B"
+if (x &lt;= 1)           class &lt;- "A"
+```
+]
+
+
+---
+
+# Species of tree-based models
+
+There are a variety of different methods for creating trees that vary over:
+
+ * The search method (e.g., greedy or global).
+ 
+ * The splitting criterion.
+ 
+ * The number of splits. 
+ 
+ * Handling of missing values. 
+ 
+ * Pruning method. 
+
+The most popular is the CART methodology, followed by the C5.0 model. 
+
+We will focus on CART for single trees. 
+
+The [CRAN Machine Learning Task View](https://cran.r-project.org/web/views/MachineLearning.html) has a good summary of the methods available in R. 
+
+---
+
+# Growing phase
+
+CART starts by _growing_ the tree.
+
+ * More and more splits are conducted until a pre-specified samples size requirement is exceeded (`min_n`). 
+
+ * The criterion used is the _purity_ of the terminal nodes that are created by each split. 
+
+For example, for simulated data with a 50% event rate, which one of these splits is better? 
+
+.pull-left[
+
+&lt;img src="images/part-6-good-split-1.svg" width="80%" style="display: block; margin: auto;" /&gt;
+]
+.pull-right[
+
+&lt;img src="images/part-6-bad-split-1.svg" width="80%" style="display: block; margin: auto;" /&gt;
+]
+
+
+---
+
+# Pruning phase
+
+The deepest possible tree has a higher likelihood of overfitting the data. 
+
+CART conducts cost-complexity pruning to find the "right sized tree". 
+
+It basically penalizes the error rate of the tree by the number of terminal nodes by minimizing
+
+`$$Error_{cv} - (c_p \times nodes)$$`
+
+Notes: 
+
+* The `\(c_p\)` value, usually between 0 and 0.1, controls the depth of the tree. 
+
+* CART has an internal 10-fold cross-validation that it uses to estimate the model error. 
+
+* If the outcome has a large class imbalance, this method optimizes the tree for the majority class.  
+
+For CART, `\(c_p\)` (aka `cost_complexity`) and the minimum splitting size (`min_n`) are the tuning parameters. 
+
+---
+
+# Aspects of single trees
+
+* The class percentages in the terminal node are used to make predictions. 
+
+* The number of possible class probabilities is typically low. 
+
+* Trees are _theoretically_ interpretable if the number of terminal nodes is low. 
+
+* The training time tends to be very fast. 
+
+* Trees are _unstable_; if the data are slightly changed, the entire tree structure can change. These are [low-bias/high-variance models](https://bookdown.org/max/FES/important-concepts.html#model-bias-and-variance). 
+
+* Very little, if any, data pre-processing is needed. _Dummy variables [are not required](https://bookdown.org/max/FES/categorical-trees.html)_. 
+
+* Trees automatically conduct _feature selection_. 
+
+
+---
+
+# Fitting and tuning trees
+
+Like MARS, there are two main ways to tune the CART model: 
+
+ * Rely on the internal CV procedure to pick the tree depth via purity/error rate:
+ 
+
+```r
+    decsion_tree(min_n = tune()) %&gt;% set_engine("rpart") %&gt;% set_mode("classification")
+```
+
+ * Manually specify `\(c_p\)` values and use external resampling with a metric of your choice:
+ 
+
+```r
+    decsion_tree(cost_complexity = tune(), min_n = tune()) %&gt;% set_engine("rpart") %&gt;% set_mode("classification")
+```
+ 
+I prefer the latter approach; I believe that the automated choice tends to pick overly simple models. 
+
+---
+
+# {recipe} and {parsnip} objects  &lt;img src="images/tune.png" class="title-hex"&gt;&lt;img src="images/recipes.png" class="title-hex"&gt;&lt;img src="images/parsnip.png" class="title-hex"&gt;
+
+.pull-left-a-lot[
+.font80[
+
+
+```r
+library(textfeatures)
+library(textrecipes)
+
+tree_rec &lt;-
+  recipe(score ~ product + review, data = training_data) %&gt;%
+  update_role(product, new_role = "id") %&gt;%
+  step_mutate(review_raw = review) %&gt;%
+  step_textfeature(review_raw) %&gt;%               
+  step_tokenize(review) %&gt;%
+  step_stopwords(review)  %&gt;%
+  step_stem(review) %&gt;%
+  step_texthash(review, signed = FALSE, num_terms = tune()) %&gt;%
+  step_zv(all_predictors()) 
+
+# and 
+
+cart_mod &lt;- 
+  decision_tree(cost_complexity = tune(), min_n = tune()) %&gt;% 
+  set_engine("rpart") %&gt;% 
+  set_mode("classification")
+
+ctrl &lt;- control_grid(save_pred = TRUE)
+```
+
+]
+
+]
+.pull-right-a-little[
+Note that:
+
+All of the text processing operations are deterministic and not reliant on any other data in the training set. 
+
+We could pre-compute the data prior to the text hashing. 
+
+Also, if we were not tuning the number of hashing terms, we could pre-compute the whole feature set with the exception of the zero-variance filter. 
+]
+
+---
+
+# Model tuning &lt;img src="images/tune.png" class="title-hex"&gt;
+
+
+```r
+cart_wfl &lt;- 
+  workflow() %&gt;% 
+  add_recipe(tree_rec) %&gt;% 
+  add_model(cart_mod)
+
+set.seed(2553)
+cart_tune &lt;-
+  tune_grid(
+    cart_wfl,
+    text_folds,
+    grid = 10,
+    metrics = metric_set(roc_auc),
+    control = ctrl
+  )
+show_best(cart_tune, metric = "roc_auc")
+```
+
+```
+## # A tibble: 5 x 8
+##   cost_complexity min_n num_terms .metric .estimator  mean     n std_err
+##             &lt;dbl&gt; &lt;int&gt;     &lt;int&gt; &lt;chr&gt;   &lt;chr&gt;      &lt;dbl&gt; &lt;int&gt;   &lt;dbl&gt;
+## 1  0.000118          33      3253 roc_auc binary     0.711    10 0.00852
+## 2  0.00000393        25      1840 roc_auc binary     0.698    10 0.00520
+## 3  0.00000000286     22       816 roc_auc binary     0.684    10 0.00601
+## 4  0.000000000303    20      1748 roc_auc binary     0.684    10 0.00486
+## 5  0.000526          16      1274 roc_auc binary     0.676    10 0.0103
+```
+
+---
+
+# Parameter profiles
+
+
+```r
+autoplot(cart_tune)
+```
+
+&lt;img src="images/part-6-cart-autoplot-1.svg" width="50%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+# Plotting ROC curves &lt;img src="images/yardstick.png" class="title-hex"&gt;&lt;img src="images/tune.png" class="title-hex"&gt;&lt;img src="images/ggplot2.png" class="title-hex"&gt;
+
+.font80[
+
+.pull-left[
+
+```r
+cart_pred &lt;- collect_predictions(cart_tune)
+cart_pred %&gt;% slice(1:5)
+```
+
+```
+## # A tibble: 5 x 8
+##   id     .pred_great .pred_other  .row num_terms cost_complexity min_n score
+##   &lt;chr&gt;        &lt;dbl&gt;       &lt;dbl&gt; &lt;int&gt;     &lt;int&gt;           &lt;dbl&gt; &lt;int&gt; &lt;fct&gt;
+## 1 Fold01       0          1         24       412     0.000000271     7 other
+## 2 Fold01       0.939      0.0606    25       412     0.000000271     7 great
+## 3 Fold01       0.734      0.266     26       412     0.000000271     7 other
+## 4 Fold01       0.961      0.0390    46       412     0.000000271     7 other
+## 5 Fold01       0.939      0.0606    48       412     0.000000271     7 great
+```
+
+```r
+cart_pred %&gt;% 
+  inner_join(select_best(cart_tune)) %&gt;% 
+  group_by(id) %&gt;% 
+  roc_curve(score, .pred_great) %&gt;% 
+  autoplot()
+```
+]
+.pull-right[
+
+
+```
+## Joining, by = c("num_terms", "cost_complexity", "min_n")
+```
+
+&lt;img src="images/part-6-cart-roc-indiv-1.svg" width="80%" style="display: block; margin: auto;" /&gt;
+
+]
+
+]
+
+---
+
+# A single (but approximate) ROC curve &lt;img src="images/yardstick.png" class="title-hex"&gt;&lt;img src="images/tune.png" class="title-hex"&gt;&lt;img src="images/ggplot2.png" class="title-hex"&gt;&lt;img src="images/dplyr.png" class="title-hex"&gt;
+
+Instead of showing all 10 curves, we could pool the 10 fold's worth of data and make a single curve that might approximate the "average" curve. 
+
+
+.font90[
+
+.pull-left[
+
+```r
+auc_curve_data &lt;- function(x) {
+    collect_predictions(x) %&gt;% 
+    inner_join(select_best(x, "roc_auc")) %&gt;% 
+    roc_curve(score, .pred_great)
+}
+approx_roc_curves &lt;- function(...) {
+  curves &lt;- map_dfr(list(...), auc_curve_data, .id = "model")
+  default_cut &lt;- 
+    curves %&gt;% 
+    group_by(model) %&gt;% 
+    arrange(abs(.threshold - .5)) %&gt;% 
+    slice(1)
+  ggplot(curves) +
+    aes(y = sensitivity, x = 1 - specificity, col = model) +
+    geom_abline(lty = 3) + 
+    geom_step(direction = "vh") + 
+    geom_point(data = default_cut) + 
+    coord_equal()
+}
+```
+
+]
+.pull-right[
+
+```r
+# Use named arguments for better labels
+approx_roc_curves(CART = cart_tune)
+```
+
+&lt;img src="images/part-6-cart-roc-approx-1.svg" width="70%" style="display: block; margin: auto;" /&gt;
+]
+
+]
+
+
+
+---
+
+# Hands-On: Down-Sampling
+
+Looking at the ROC curve, the default cutoff may not be optimal if FP and FN errors are about equal. 
+
+We could pick a better cutoff or fit another model using _sub-class sampling_. 
+
+The latter approach would balance the data prior to model fitting. 
+
+ * The most common method would be to _down-sample_ the data. 
+ 
+ * This is fairly controversial (at least in statistical circles). 
+
+Let's take 20m and refit the model code above with a recipe that includes downsampling. 
+
+[link to recipes documentation](https://tidymodels.github.io/recipes/reference/index.html)
+
+
+<div class="countdown" id="timer_5e225421" style="bottom:0;left:5;" data-warnwhen="0">
+<code class="countdown-time"><span class="countdown-digits minutes">20</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">00</span></code>
+</div>
+
+
+
+---
+
+# Variable importance
+
+Also like MARS, these models judge importance by how much the terminal node purity improved with each split. 
+
+These are aggregated over variables. 
+
+Note: by default, these measures will contain predictors _not used in the tree_ (due to [surrogate splits](https://www.salford-systems.com/resources/webinars-tutorials/tips-and-tricks/using-surrogates-to-improve-datasets-with-missing-values)). 
+
+You can change this using the `rpart.control()` option. 
+
+Unfortunately, for these data, the hashed variables are rather opaque. It takes a lot of work to determine which words map to which features.  
+
+
+
+---
+layout: false
+class: inverse, middle, center
+
+# Boosting
+
+
+
+---
+
+# Original concept of boosting
+
+The original boosting algorithm was created for two-class problems and was designed to _boost_ a weak learner into a strong one. 
+
+```
+Fit an initial tree where all samples are treated equally
+for i = 1 to M boosting iterations {
+   Samples predicted   correctly have _increased_ weights
+   Samples predicted incorrectly have _decreased_ weights
+   
+   Fit a new model under the weighting scheme
+   
+   Quantify the model fit
+}
+```  
+
+Once this sequence of trees were fit, the final prediction was a weighted average of all of the trees
+
+ * These weights were created from the performance estimates for each tree. 
+
+This led to a dramatic increase in performance and only works because if the instability of tree-based models. 
+
+
+
+---
+
+# Example tree fit with equal weights
+
+&lt;img src="images/part-6-boost-plot-1-1.svg" width="50%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+# Boosting iteration 2
+
+&lt;img src="images/part-6-boost-plot-2-1.svg" width="50%" style="display: block; margin: auto;" /&gt;
+
+---
+
+# Boosting iteration 3
+
+&lt;img src="images/part-6-boost-plot-3-1.svg" width="50%" style="display: block; margin: auto;" /&gt;
+
+---
+
+# Boosting iteration 4
+
+&lt;img src="images/part-6-boost-plot-4-1.svg" width="50%" style="display: block; margin: auto;" /&gt;
+
+---
+
+# Boosting iteration 5
+
+&lt;img src="images/part-6-boost-plot-5-1.svg" width="50%" style="display: block; margin: auto;" /&gt;
+
+---
+
+# Initial limitations led to modern boosting
+
+The initial model was only for two-class problems and had some obvious drawbacks. 
+
+Once the statisticians took a look at things, they made connections to statistical theory and gradient descent. 
+
+ * This is why modern boosting is called _stochastic gradient boosting_. 
+ 
+The deep learning people also contributed a lot of interesting work by adding tuning parameters that help optimize these models. 
+
+The `xgboost` package is probably the best modern gradient boosting package. 
+
+However, we are going to use something less complicated and somewhat old-school but very powerful. 
+
+---
+
+# C5.0 
+
+A researcher named Ross Quinlan did research on tree- and rule-based models in the same general time frame as the CART folks. 
+
+His C4.5 algorithm was somewhat different than CART and, in some ways, much more elegant. 
+
+ * More than two splits, unbiased selection, better handling of missing values, a different pruning process, etc.
+ 
+Quinlan's modern models, **C5.0** and **Cubist**, are not as well known mostly since he has not published them. 
+
+C5.0 takes his C4.5 model and enables a classical boosting approach to building a sequence of trees. 
+
+Most improvement comes in the first 50 iterations of boosting and the main two tuning parameters are `min_n` and the number of `trees` in the ensemble. 
+
+The `C50` package is based on the original C code for this model. The best references for this are [Quinlan's original book](https://www.google.com/search?ei=XXvBXd6XGZC35gKmuLbYDw&amp;q=quinlan+%22C4.5%3A+Programs+for+Machine+Learning%22&amp;oq=quinlan+%22C4.5%3A+Programs+for+Machine+Learning%22) and Chapter 14 of [_APM_](https://www.google.com/search?q=Kuhn+%22applied+predictive+modeling%22&amp;oq=Kuhn+%22applied+predictive+modeling%22). 
+
+---
+
+# C5.0 &lt;img src="images/tune.png" class="title-hex"&gt;&lt;img src="images/parsnip.png" class="title-hex"&gt;&lt;img src="images/dplyr.png" class="title-hex"&gt;
+
+This model is availible as a `parsnip` engine for `decision_tree()` as well as `boosted_tree()`. We will demonstrate with the latter. 
+
+.font90[
+
+.pull-left[
+
+```r
+C5_mod &lt;- 
+  boost_tree(trees = tune(), min_n = tune()) %&gt;% 
+  set_engine("C5.0") %&gt;% 
+  set_mode("classification")
+
+C5_wfl &lt;- update_model(cart_wfl, C5_mod)
+```
+]
+.pull-right[
+
+```r
+# We will just modify our CART grid and add 
+# a new parameter: 
+set.seed(5793)
+C5_grid &lt;- 
+  collect_metrics(cart_tune) %&gt;% 
+  dplyr::select(min_n, num_terms) %&gt;% 
+  mutate(trees = sample(1:100, 10))
+
+C5_tune &lt;-
+  tune_grid(
+    C5_wfl,
+    text_folds,
+    grid = C5_grid,
+    metrics = metric_set(roc_auc),
+    control = ctrl
+  )
+```
+]
+
+
+]
+
+---
+
+# Comparing models &lt;img src="images/tune.png" class="title-hex"&gt;&lt;img src="images/ggplot2.png" class="title-hex"&gt;
+
+.code90[
+
+.pull-left[
+
+```r
+approx_roc_curves(CART = cart_tune, C5 = C5_tune)
+```
+
+&lt;img src="images/part-6-C5-roc-approx-1.svg" width="80%" style="display: block; margin: auto;" /&gt;
+
+]
+.pull-right[
+
+
+
+```r
+show_best(C5_tune)
+```
+
+```
+## # A tibble: 5 x 8
+##   trees min_n num_terms .metric .estimator  mean     n std_err
+##   &lt;int&gt; &lt;int&gt;     &lt;int&gt; &lt;chr&gt;   &lt;chr&gt;      &lt;dbl&gt; &lt;int&gt;   &lt;dbl&gt;
+## 1    54    33      3253 roc_auc binary     0.808    10 0.00931
+## 2    52    20      1748 roc_auc binary     0.798    10 0.00891
+## 3    84    25      1840 roc_auc binary     0.795    10 0.00924
+## 4    64    16      1274 roc_auc binary     0.788    10 0.00763
+## 5     6    37      2654 roc_auc binary     0.780    10 0.00932
+```
+
+```r
+autoplot(C5_tune)
+```
+
+&lt;img src="images/part-6-C5-best-1.svg" width="90%" style="display: block; margin: auto;" /&gt;
+
+]
+]
+
+
+
+---
+
+# Finalizing the recipe and model&lt;img src="images/tune.png" class="title-hex"&gt;&lt;img src="images/recipes.png" class="title-hex"&gt;
+
+.code90[
+
+.pull-left[
+
+```r
+best_C5 &lt;- select_best(C5_tune)
+best_C5
+```
+
+```
+## # A tibble: 1 x 3
+##   trees min_n num_terms
+##   &lt;int&gt; &lt;int&gt;     &lt;int&gt;
+## 1    54    33      3253
+```
+
+```r
+# no prep-juice calls!
+C5_wfl_final &lt;- 
+  C5_wfl %&gt;%
+  finalize_workflow(best_C5) %&gt;% 
+  fit(data = training_data)
+```
+]
+.pull-right[
+
+```r
+C5_wfl_final
+```
+
+```
+## ══ Workflow [trained] ══════════════════════════════════════════════════════════════════════════════
+## Preprocessor: Recipe
+## Model: boost_tree()
+## 
+## ── Preprocessor ────────────────────────────────────────────────────────────────────────────────────
+## 7 Recipe Steps
+## 
+## ● step_mutate()
+## ● step_textfeature()
+## ● step_tokenize()
+## ● step_stopwords()
+## ● step_stem()
+## ● step_texthash()
+## ● step_zv()
+## 
+## ── Model ───────────────────────────────────────────────────────────────────────────────────────────
+## 
+## Call:
+## C5.0.default(x = x, y = y, trials = 54L, control = C50::C5.0Control(minCases = 33L, sample = 0))
+## 
+## Classification Tree
+## Number of samples: 4000 
+## Number of predictors: 3120 
+## 
+## Number of boosting iterations: 54 requested;  37 used due to early stopping
+## Average tree size: 21.1 
+## 
+## Non-standard options: attempt to group attributes, minimum number of cases: 33
+```
+]
+
+]
+
+---
+
+# Predicting the test set &lt;img src="images/yardstick.png" class="title-hex"&gt;&lt;img src="images/recipes.png" class="title-hex"&gt;&lt;img src="images/parsnip.png" class="title-hex"&gt;
+
+
+.pull-left[
+
+```r
+test_probs &lt;- 
+  predict(C5_wfl_final, testing_data, type = "prob") %&gt;% 
+  bind_cols(testing_data %&gt;% dplyr::select(score)) %&gt;% 
+  bind_cols(predict(C5_wfl_final, testing_data))
+
+roc_auc(test_probs, score, .pred_great)
+```
+
+```
+## # A tibble: 1 x 3
+##   .metric .estimator .estimate
+##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt;
+## 1 roc_auc binary         0.807
+```
+
+```r
+conf_mat(test_probs, score, .pred_class)
+```
+
+```
+##           Truth
+## Prediction great other
+##      great   580   160
+##      other    78   182
+```
+]
+.pull-right[
+
+```r
+roc_values &lt;- 
+  roc_curve(test_probs, score, .pred_great)
+autoplot(roc_values)
+```
+
+&lt;img src="images/part-6-test-set-curve-1.svg" width="80%" style="display: block; margin: auto;" /&gt;
+]
+
+
+
+---
+layout: false
+class: inverse, middle, center
+
+#  Extra Slides (as time allows)
+
+
+
+---
+layout: false
+class: inverse, middle, center
+
+#  Naive Bayes
+
+
+---
+
+# Naive Bayes Models
+
+This classification model is motivated directly from statistical theory based on Bayes' Rule:
+
+`$$Pr[Class|Predictors] = \frac{Pr[Class]\times Pr[Predictors|Class]}{Pr[Predictors]} 
+= \frac{Prior\:\times\:Likelihood}{Evidence}$$`
+
+In English:
+
+&gt; Given our predictor data, what is the probability of each class? 
+
+The _prior_ is the prevalence that was mentioned earlier (e.g. the rate of 5-star reviews). This can be estimated or set. 
+
+Most of the action is in `Pr[Predictors|Class]`, which is based on the observed training set.
+
+Predictions are based on a blend of the training data and our _prior belief_ about the outcome... 
+
+
+
+---
+
+# So  Why is it Naive?
+
+Determining `\(Pr[Predictors|Class]\)` can be very difficult without strong assumptions because it measures the _joint probability_ of all of the predictors. 
+
+* For example, what is the correlation between a person's essay length and their religion? 
+
+To resolve this, **naive** Bayes assumes that all of the predictors are _independent_ and that their probabilities can be estimated separately. 
+
+The joint probability is then the product of all of the individual probabilities (an example follows soon). 
+
+This assumption is almost certainly bogus but the model tends to do well despite this. 
+
+
+---
+
+# The Effect of Independence
+
+The probability contours assume multivariate normality with different assumptions.  
+
+Suppose the red dot is a new sample. 
+
+&lt;img src="images/part-6-nb-indep-1.svg" width="60%" style="display: block; margin: auto;" /&gt;
+
+Probability of the red point: 0.0000066 (accurate) and 0.013 (inaccurate). 
+
+---
+
+# Conditional Densities for Each Class
+
+`\(Pr[Words|Class]\)`
+
+
+
+
+&lt;img src="images/part-6-nb-dens-1.svg" width="60%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+# Conditional Values for Numeric Predictors
+
+`\(Pr[Words=100|score]\)`
+
+&lt;img src="images/part-6-nb-numeric-1.svg" width="60%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+# Conditional Probabilities for Categorical Predictors
+
+`\(Pr[\text{Has Word } X|score]\)`
+
+&lt;img src="images/part-6-nb-cat-1.svg" width="60%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+# Combining Predictor Scores with the Prior
+
+
+
+
+For a review with 100 words that didn't have keyword `\(X\)`, their likelihood values were:
+
+* `\(Pr[Words = 100| great] \times Pr[X \text{ Absent}| great]\)` = 0.734 x 0.699 = 0.513
+
+* `\(Pr[Words = 100| other] \times Pr[X \text{ Absent}| other]\)` =0.951 x 0.866 = 0.824
+
+However, when these are combined with the _prior probability_ for each class, the _relative probabilities_ show:
+
+
+* `\(Pr[Predictors| great] \times Pr[great]\)` = 0.513 x 0.65 = 0.334
+
+* `\(Pr[Predictors| other] \times Pr[other]\)` = 0.824 x 0.35 = 0.288
+
+We don't need to compute the evidence; we can just normalize these values to add up to 1. 
+
+The results is that the _posterior probability_ that this review was 5-star is 53.6%.
+
+
+---
+
+# Pros and Cons
+
+.pull-left[
+Good: 
+
+* This model can be very quickly trained (and theoretically in parallel). 
+
+* Once trained, the prediction is basically a look-up table (i.e. fast). 
+
+* Nonlinear class boundaries can be generated. 
+
+]
+.pull-right[
+Bad:
+
+* Linearly diagonal boundaries can be difficult.
+
+* With many predictors, the class probabilities become poorly calibrated and U-shaped with most values near zero or one. 
+]
+
+
+---
+
+# U-Shaped Class Probability Distributions
+
+.pull-left[
+A completely non-informative data set was simulated using the naive assumption. 
+
+The training set has 500 data points over two classes and 450 predictors. 
+
+When a model is fit with 10 predictors, the distribution of the class probabilities gives us shapes that we would expect.
+  
+What happens when the number of predictors becomes larger? 
+]
+.pull-right[
+
+&lt;img src="images/part-6-normal-shape-1.svg" width="90%" style="display: block; margin: auto;" /&gt;
+]
+
+---
+
+# U-Shaped Class Probability Distributions
+
+
+&lt;img src="images/bayes.gif" width="75%" style="display: block; margin: auto;" /&gt;
+
+
+---
+
+# Naive Bayes recipe and fit &lt;img src="images/tune.png" class="title-hex"&gt;&lt;img src="images/recipes.png" class="title-hex"&gt;&lt;img src="images/parsnip.png" class="title-hex"&gt;
+
+There is a step specifically designed for converting binary dummy variables into factors. 
+
+
+```r
+count_to_binary &lt;- function(x) {
+  factor(ifelse(x != 0, "present", "absent"),
+         levels = c("present", "absent"))
+}
+
+nb_rec &lt;- 
+  tree_rec %&gt;%
+  step_mutate_at(starts_with("review_hash"), fn = count_to_binary)
+
+library(discrim)
+
+nb_mod &lt;- naive_Bayes() %&gt;% set_engine("klaR")
+
+nb_tune &lt;-
+  tune_grid(
+    nb_rec,
+    nb_mod,
+    text_folds,
+    grid = tibble(num_terms = floor(2^seq(8, 12, by = 0.5))),
+    metrics = metric_set(roc_auc),
+    control = ctrl
+  )
+```
+
+---
+
+# Naive Bayes results
+
+.font80[
+There are a number of warnings that look like: 
+
+&gt; `Numerical 0 probability for all classes with observation 1`
+
+This is due to the poorly calibrated probabilities although the warning is a bit misleading. This issue does not generally affect performance and can be ignored. 
+
+
+
+.pull-left[
+
+```r
+autoplot(nb_tune) +
+  scale_x_continuous(trans = log2_trans())
+```
+
+&lt;img src="images/part-6-nb-plot-1.svg" width="80%" style="display: block; margin: auto;" /&gt;
+]
+.pull-right[
+
+```r
+approx_roc_curves(CART = cart_tune, C5 = C5_tune, 
+                  "Naive Bayes" = nb_tune)
+```
+
+&lt;img src="images/part-6-nb-roc-approx-1.svg" width="60%" style="display: block; margin: auto;" /&gt;
+
+]
+
+]
+
+
+---
+layout: false
+class: inverse, middle, center
+
+#  Some Cool Things to Mention!
+
+
+---
+
+# {tidypredict} and {modeldb}
+
+These are two packages that can use SQL to deploy (and sometimes fit) models. 
+
+
+
+```r
+library(tidypredict)
+library(dbplyr)
+
+lin_reg_fit &lt;- lm(Sepal.Width ~ ., data = iris)
+
+# R code
+tidypredict_fit(lin_reg_fit)
+```
+
+```
+## 1.65716389226361 + (Sepal.Length * 0.377773406416986) + (Petal.Length * 
+##     -0.187566584248584) + (Petal.Width * 0.625710493432476) + 
+##     (ifelse(Species == "versicolor", 1, 0) * -1.16028529814733) + 
+##     (ifelse(Species == "virginica", 1, 0) * -1.39825487768477)
+```
+
+```r
+# SQL code
+tidypredict_sql(lin_reg_fit, con = simulate_dbi())
+```
+
+```
+## &lt;SQL&gt; 1.65716389226361 + (`Sepal.Length` * 0.377773406416986) + (`Petal.Length` * -0.187566584248584) + (`Petal.Width` * 0.625710493432476) + (CASE WHEN (`Species` = 'versicolor') THEN (1.0) WHEN NOT(`Species` = 'versicolor') THEN (0.0) END * -1.16028529814733) + (CASE WHEN (`Species` = 'virginica') THEN (1.0) WHEN NOT(`Species` = 'virginica') THEN (0.0) END * -1.39825487768477)
+```
+
+
+---
+
+# Multiclass Metrics With yardstick &lt;img src="images/yardstick.png" class="title-hex"&gt;
+
+Multiclass? This just means your outcome has &gt;2 possibilities (Religion: Catholic, Atheist, Buddhist, etc).
+
+.pull-left[
+
+Consider binary `precision()`:
+
+$$
+Pr = \frac{TP}{TP + FP} 
+$$
+
+
+```
+## # A tibble: 5 x 2
+##   truth estimate
+##   &lt;fct&gt; &lt;fct&gt;   
+## 1 ✅    ✅      
+## 2 😡    😡      
+## 3 ✅    ✅      
+## 4 😡    ✅      
+## 5 😡    😡
+```
+
+]
+
+.pull-right[
+
+`$$TP = 2$$`
+
+`$$FP = 1$$`
+
+`$$Pr = \frac{2}{2 + 1} = \frac{2}{3}$$`
+
+
+```r
+precision(prec_example, truth, estimate)
+```
+
+```
+## # A tibble: 1 x 3
+##   .metric   .estimator .estimate
+##   &lt;chr&gt;     &lt;chr&gt;          &lt;dbl&gt;
+## 1 precision binary         0.667
+```
+
+]
+
+---
+
+# Macro Averaging &lt;img src="images/yardstick.png" class="title-hex"&gt;
+
+What does this look like in multiclass world?
+
+.pull-left[
+
+
+```
+## # A tibble: 5 x 2
+##   truth estimate
+##   &lt;fct&gt; &lt;fct&gt;   
+## 1 ✅    ✅      
+## 2 🤷    😡      
+## 3 ✅    ✅      
+## 4 😡    🤷      
+## 5 😡    😡
+```
+
+One technique for dealing with this is _macro averaging_. This reduces the problem to multiple one-vs-all comparisons.
+
+]
+
+--
+
+.pull-right[
+
+1) Convert `truth`/`estimate` to binary with levels: ✅ and `other`.
+
+2) Compute `precision()` to get `Pr_1`.
+
+3) Repeat 1) and 2) for each level to get `Pr_1`, `Pr_2`, `Pr_3`.
+
+4) Average the results:
+
+$$
+Pr_{macro} = \frac{Pr_1 + Pr_2 + Pr_3}{3}
+$$
+
+]
+
+---
+
+# Macro Averaging &lt;img src="images/yardstick.png" class="title-hex"&gt;
+
+
+.pull-left[
+
+
+```r
+prec_multi
+```
+
+```
+## # A tibble: 5 x 2
+##   truth estimate
+##   &lt;fct&gt; &lt;fct&gt;   
+## 1 ✅    ✅      
+## 2 🤷    😡      
+## 3 ✅    ✅      
+## 4 😡    🤷      
+## 5 😡    😡
+```
+
+$$
+`\begin{align}
+Pr_1 &amp;= \frac{2}{2 + 0} = 1\\
+Pr_2 &amp;= \frac{1}{1 + 1} = 0.5\\
+Pr_3 &amp;= \frac{0}{0 + 1} = 0
+\end{align}`
+$$
+
+]
+
+.pull-right[
+
+`$$Pr_{macro} = \frac{1 + 0.5 + 0}{3} = 0.5$$`
+
+
+```r
+precision(prec_multi, truth, estimate)
+```
+
+```
+## # A tibble: 1 x 3
+##   .metric   .estimator .estimate
+##   &lt;chr&gt;     &lt;chr&gt;          &lt;dbl&gt;
+## 1 precision macro            0.5
+```
+
+]
+
+???
+
+yardstick automatically detects that you have a multiclass outcome.
+
+---
+
+# Caveats &lt;img src="images/yardstick.png" class="title-hex"&gt;
+
+Macro averaging gives each class _equal weight_ to the total precision value (`1/3` here). This may not be realistic when a class imbalance is present. 
+
+In that case, you can use a _weighted macro average_ which weights by the frequency of that class in the `truth` column.
+
+
+```r
+precision(prec_multi, truth, estimate, estimator = "macro_weighted")
+```
+
+```
+## # A tibble: 1 x 3
+##   .metric   .estimator     .estimate
+##   &lt;chr&gt;     &lt;chr&gt;              &lt;dbl&gt;
+## 1 precision macro_weighted       0.6
+```
+
+--
+
+There is additionally a _micro average_ that gives each _observation_ equal weight rather than each _class_. This gives classes with more observations more influence.
+
+
+Find more information at the [yardstick vignette](https://tidymodels.github.io/yardstick/articles/multiclass.html).
+
+
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script src="https://platform.twitter.com/widgets.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "solarized-light",
+"highlightLanguage": "R",
+"highlightLines": true,
+"countIncrementalSlides": false,
+"ratio": "16:9"
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
