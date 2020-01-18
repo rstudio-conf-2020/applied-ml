@@ -12,6 +12,10 @@ Applied Machine Learning
 
 -----
 
+![](https://github.com/rstudio-conf-2020/applied-ml/raw/master/images/rotate.gif | width=50)
+
+-------
+
 ## Overview
 
 Machine learning is the study and application of algorithms that learn from and make predictions on data. From search results to self-driving cars, it has manifested itself in all areas of our lives and is one of the most exciting and fast-growing fields of research in the world of data science. 
