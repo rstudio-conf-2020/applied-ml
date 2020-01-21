@@ -1,15 +1,13 @@
-<!-- compile `rmarkdown::render("README.Rmd", output_format = "all")` -->
-
 # Applied Machine Learning
 
 ### rstudio::conf 2020
 
 -----
 
-:spiral\_calendar: January 27 and 28, 2020
-:alarm\_clock: 09:00 - 17:00
-:hotel: Continental Ballroom Rooms 4 (Ballroom Level)
-:writing\_hand: [rstd.io/conf](http://rstd.io/conf)
+:spiral\_calendar: January 27 and 28, 2020<br/>
+:alarm\_clock: 09:00 - 17:00<br/>
+:hotel: Continental Ballroom Rooms 4 (Ballroom Level)<br/>
+:writing\_hand: [rstd.io/conf](http://rstd.io/conf)<br/>
 :ledger: Part [1](https://rstudio-conf-2020.github.io/applied-ml/Part_1.html) [2](https://rstudio-conf-2020.github.io/applied-ml/Part_2.html) [3](https://rstudio-conf-2020.github.io/applied-ml/Part_3.html) [4](https://rstudio-conf-2020.github.io/applied-ml/Part_4.html) [5](https://rstudio-conf-2020.github.io/applied-ml/Part_5.html) [6](https://rstudio-conf-2020.github.io/applied-ml/Part_6.html)
 
 -----
