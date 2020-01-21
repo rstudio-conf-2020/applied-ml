@@ -4,7 +4,7 @@
     <title>Applied Machine Learning</title>
     <meta charset="utf-8" />
     <meta name="author" content="Max Kuhn and Davis Vaughan (RStudio)" />
-    <meta name="date" content="2020-01-16" />
+    <meta name="date" content="2020-01-21" />
     <script src="libs/jquery-1.12.4/jquery.min.js"></script>
     <script src="libs/elevate-section-attrs-2.0/elevate-section-attrs.js"></script>
     <link href="libs/remark-css-0.0.1/default.css" rel="stylesheet" />
@@ -59,7 +59,7 @@ library(tidymodels)
 ```
 
 ```
-## ── Attaching packages ─────────────────────────────────────────────────────────── tidymodels 0.0.4 ──
+## ── Attaching packages ────────────────────────────────────────────────────────── tidymodels 0.0.4 ──
 ```
 
 ```
@@ -73,7 +73,7 @@ library(tidymodels)
 ```
 
 ```
-## ── Conflicts ────────────────────────────────────────────────────────────── tidymodels_conflicts() ──
+## ── Conflicts ───────────────────────────────────────────────────────────── tidymodels_conflicts() ──
 ## x purrr::discard()    masks scales::discard()
 ## x dplyr::filter()     masks stats::filter()
 ## x dplyr::lag()        masks stats::lag()
@@ -1047,13 +1047,13 @@ mixture()
 ```
 
 ```r
-glmn_set &lt;- parameters(penalty(), mixture())
+glmn_param &lt;- parameters(penalty(), mixture())
 ```
 ]
 .pull-right[
 
 ```r
-glmn_set
+glmn_param
 ```
 
 ```
@@ -1207,7 +1207,7 @@ Looking at the help file `?nearest_neighbors` and find the names of the three tu
 
 Create a parameter set for these three, make at least one grid, and plot them. 
 
-<div class="countdown" id="timer_5e20d8b7" style="bottom:0;left:1;" data-warnwhen="0">
+<div class="countdown" id="timer_5e271e5c" style="bottom:0;left:1;" data-warnwhen="0">
 <code class="countdown-time"><span class="countdown-digits minutes">10</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">00</span></code>
 </div>
 

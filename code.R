@@ -502,7 +502,7 @@ knn_pred <-
 
 prices <-  
   map_dfr(knn_res$splits,  
-          ~ assessment(.x) %>% select(Sale_Price)) %>%  
+          ~ assessment(.x) %>% dplyr::select(Sale_Price)) %>%  
   mutate(Sale_Price = log10(Sale_Price))
 
 rmse_estimates <- 
@@ -538,9 +538,9 @@ collect_metrics(easy_eval, summarize = FALSE) %>%
 penalty()
 mixture()
 
-glmn_set <- parameters(penalty(), mixture())
+glmn_param <- parameters(penalty(), mixture())
 
-glmn_set
+glmn_param
 
 glmn_grid <- 
   grid_regular(glmn_param, levels = c(10, 5))
@@ -768,6 +768,8 @@ plot(glmn_fit$fit, xvar = "lambda")
 # ------------------------------------------------------------------------------
 # A glmnet Coefficient Plot (slide 37)
 
+library(ggrepel)
+
 # Get the set of coefficients across penalty values
 tidy_coefs <-
   broom::tidy(glmn_fit) %>%
@@ -966,6 +968,8 @@ data(small_fine_foods)
 
 # ------------------------------------------------------------------------------
 # Optional step: remove zero-variance predictors (slide 36)
+
+library(textrecipes)
 
 count_to_binary <- function(x) {
   factor(ifelse(x != 0, "present", "absent"),
@@ -1220,6 +1224,18 @@ tidypredict_sql(lin_reg_fit, con = simulate_dbi())
 
 # ------------------------------------------------------------------------------
 # Multiclass Metrics With yardstick (slide 70)
+
+library(emo)
+
+up <- ji("white_check_mark")
+down <- ji("rage")
+
+prec_example <- tibble(
+  truth = factor(c(up, down, up, down, down), levels = c(up, down)),
+  estimate = factor(c(up, down, up, up, down), levels = c(up, down))
+)
+
+prec_example
 
 precision(prec_example, truth, estimate)
 
