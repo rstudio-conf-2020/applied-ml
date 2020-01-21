@@ -22,8 +22,8 @@ output:
 params:
   wifi_network: "rstudio20"
   wifi_password: "tidyverse20"
-  site_link: "rstd.io/class"
-  cloud_link: "rstd.io/class"
+  site_link: "http://rstd.io/class"
+  cloud_link: "http://rstd.io/class"
   github_link: "applied-ml"
 editor_options: 
   chunk_output_type: console
