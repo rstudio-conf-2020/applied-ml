@@ -81,8 +81,43 @@ ames_lst_col %>%
 # ------------------------------------------------------------------------------
 # Hands-on: Quick Data Investigation (slide 15)
 
+library(tidyverse)
 library(AmesHousing)
 ames <- make_ames()
+
+theme_set(theme_bw())
+
+# outliers
+ggplot(ames, aes(x = Lot_Area)) + 
+  geom_histogram()
+
+ggplot(ames, aes(x = Lot_Area)) + 
+  geom_histogram() + 
+  scale_x_log10()
+
+str(ames$Condition_1)
+
+ggplot(ames, aes(x = Condition_1)) + 
+  geom_bar() + 
+  coord_flip() 
+
+grep("SF$", names(ames), value = TRUE)
+
+ggplot(ames, aes(x = Total_Bsmt_SF, y = First_Flr_SF)) + 
+  geom_point(alpha = .3)
+
+ggplot(ames, aes(x = Lot_Area)) + 
+  geom_histogram() + 
+  facet_wrap(~Lot_Shape) + 
+  scale_x_log10()
+
+ggplot(ames, aes(x = Gr_Liv_Area, Sale_Price)) + 
+  geom_point(alpha = .3) + 
+  scale_x_log10() + 
+  scale_y_log10() + 
+  facet_wrap(~Bldg_Type) + 
+  geom_smooth(method = lm)
+
 
 # ------------------------------------------------------------------------------
 # Part 2
@@ -258,7 +293,7 @@ names(ames_test_dummies)
 # Re-run the recipe with this step.
 
 # What were the results?
-  
+
 # Do you prefer either of these approaches to the other?
 
 # ------------------------------------------------------------------------------
