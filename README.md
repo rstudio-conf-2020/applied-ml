@@ -10,7 +10,7 @@
 :writing\_hand: [rstd.io/conf](http://rstd.io/conf)<br/>
 :ledger: Part [1](https://rstudio-conf-2020.github.io/applied-ml/Part_1.html) [2](https://rstudio-conf-2020.github.io/applied-ml/Part_2.html) [3](https://rstudio-conf-2020.github.io/applied-ml/Part_3.html) [4](https://rstudio-conf-2020.github.io/applied-ml/Part_4.html) [5](https://rstudio-conf-2020.github.io/applied-ml/Part_5.html) [6](https://rstudio-conf-2020.github.io/applied-ml/Part_6.html)
 
------
+## [![Gitter](https://badges.gitter.im/conf2020-applied-ml/community.svg)](https://gitter.im/conf2020-applied-ml/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 <img src="https://github.com/rstudio-conf-2020/applied-ml/raw/master/images/rotate.gif" width="400" align="middle" class="center">
 
