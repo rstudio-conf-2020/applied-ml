@@ -4,9 +4,7 @@
     <title>Applied Machine Learning</title>
     <meta charset="utf-8" />
     <meta name="author" content="Max Kuhn and Davis Vaughan (RStudio)" />
-    <meta name="date" content="2020-01-16" />
-    <script src="libs/jquery-1.11.3/jquery.min.js"></script>
-    <script src="libs/elevate-section-attrs-2.0/elevate-section-attrs.js"></script>
+    <meta name="date" content="2020-01-26" />
     <link href="libs/remark-css-0.0.1/default.css" rel="stylesheet" />
     <script src="libs/kePrint-0.0.1/kePrint.js"></script>
     <link href="libs/countdown-0.3.3/countdown.css" rel="stylesheet" />
@@ -42,22 +40,16 @@ library(tidymodels)
 ```
 
 ```
-## Registered S3 method overwritten by 'xts':
-##   method     from
-##   as.zoo.xts zoo
-```
-
-```
 ## ── Attaching packages ─────────────────────────────────────────────────────────── tidymodels 0.0.4 ──
 ```
 
 ```
-## ✓ broom     0.5.2          ✓ recipes   0.1.9     
-## ✓ dials     0.0.4          ✓ rsample   0.0.5     
-## ✓ dplyr     0.8.3          ✓ tibble    2.1.3     
-## ✓ ggplot2   3.2.1          ✓ tune      0.0.1     
-## ✓ infer     0.5.1          ✓ workflows 0.1.0     
-## ✓ parsnip   0.0.4.9000     ✓ yardstick 0.0.4     
+## ✓ broom     0.5.3     ✓ recipes   0.1.9
+## ✓ dials     0.0.4     ✓ rsample   0.0.5
+## ✓ dplyr     0.8.3     ✓ tibble    2.1.3
+## ✓ ggplot2   3.2.1     ✓ tune      0.0.1
+## ✓ infer     0.5.1     ✓ workflows 0.1.0
+## ✓ parsnip   0.0.5     ✓ yardstick 0.0.5
 ## ✓ purrr     0.3.3
 ```
 
@@ -71,10 +63,6 @@ library(tidymodels)
 ## x recipes::yj_trans() masks scales::yj_trans()
 ```
 
-```r
-library(workflows)
-```
-
 
 
 
@@ -85,17 +73,17 @@ library(workflows)
 ```r
 library(AmesHousing)
 
-ames &lt;- 
-  make_ames() %&gt;% 
+ames &lt;- make_ames() %&gt;% 
   dplyr::select(-matches("Qu"))
 
 set.seed(4595)
+
 data_split &lt;- initial_split(ames, strata = "Sale_Price")
+
 ames_train &lt;- training(data_split)
 ames_test  &lt;- testing(data_split)
 
-lm_mod &lt;- 
-  linear_reg() %&gt;% 
+lm_mod &lt;- linear_reg() %&gt;% 
   set_engine("lm")
 
 perf_metrics &lt;- metric_set(rmse, rsq, ccc)
@@ -135,6 +123,10 @@ In statistics, this is generally called _preprocessing_ the data. As usual, the 
 * As we'll see in an example, changing the scale of the predictors using a **transformation** can lead to a big improvement. 
 
 * In other cases, the data can be **encoded** in a way that maximizes its effect on the model. Representing the date as the day of the week can be very effective for modeling public transportation data. 
+
+---
+
+# Reasons for Modifying the Data
 
 * Many models cannot cope with missing data so **imputation** strategies might be necessary.  
 
@@ -197,19 +189,16 @@ Most dummy variable procedures would make _two_ numeric variables from this pred
 
 If there are _C_ levels of the factor, only _C_-1 dummy variables are created since the last can be inferred from the others. There are different contrast schemes for creating the new variables. 
 
-For ordered factors, [_polynomial_ contrasts are used](https://bookdown.org/max/FES/encodings-for-ordered-data.html). This is, in many cases, a bad idea. I usually convert them to unordered factors. 
-
 How do you create them in R? 
 
 The formula method does this for you&lt;sup&gt;1&lt;/sup&gt;. Otherwise, the traditional method is to use `model.matrix()` to create a matrix. However, there are some caveats to this that can make things difficult. 
 
 We'll show another method for making them shortly. 
 
-.footnote[[1] _Almost always_ at least. Tree- and rule-based model functions do not. Examples are `randomforest::randomForest`, `ranger::ranger`, `rpart::rpart`, `C50::C5.0`, `Cubist::cubist`,  `klaR::NaiveBayes` and others.]
+.footnote[[1] _Almost always_ at least. Tree- and rule-based model functions do not. Examples are `randomforest`, `ranger`, `rpart`, `C50`, `Cubist`, `klaR::NaiveBayes` and others.]
 
 ???
 Caveats include new (unseen) levels of a predictor value.
-
 
 ---
 
@@ -247,34 +236,41 @@ There are two main approaches to dealing with this:
  
  * Recode the factor so that infrequently occurring predictors (and possibly new values) are pooled into an "other" category. 
  
-However, `model.matrix()` and the formula method are incapable of doing either of these. 
+However, `model.matrix()` and the formula method are incapable of helping you. 
 
 
 ---
 
 # Recipes &lt;img src="images/recipes.png" class="title-hex"&gt;
 
-Recipes are an alternative method for creating the data frame of predictors for a model. 
-
-They allow for a sequence of _steps_ that define how data should be handled. 
+Recipes are an alternative method for creating the data frame of predictors for a model. They allow for a sequence of _steps_ that define how data should be handled. 
 
 Recall the previous part where we used the formula `log10(Sale_Price) ~ Longitude + Latitude`? These steps are:
 
+.pull-left-a-little[
+
 * Assign `Sale_Price` to be the outcome
+
 * Assign `Longitude` and `Latitude` as predictors
+
 * Log transform the outcome
+
+]
+
+.pull-right-a-lot[
 
 To start using a recipe, these steps can be done using 
 
 
 ```r
 # recipes loaded by tidymodels
-mod_rec &lt;- recipe(Sale_Price ~ Longitude + Latitude, data = ames_train) %&gt;%
+mod_rec &lt;- recipe(Sale_Price ~ Longitude + Latitude, ames_train) %&gt;%
   step_log(Sale_Price, base = 10)
 ```
 
 This creates the recipe for data processing (but does not execute it yet)
 
+]
 
 ---
 
@@ -290,6 +286,7 @@ mod_rec &lt;- recipe(
     Sale_Price ~ Longitude + Latitude + Neighborhood, 
     data = ames_train
   ) %&gt;%
+  
   step_log(Sale_Price, base = 10) %&gt;%
   
   # Lump factor levels that occur in 
@@ -360,9 +357,6 @@ mod_rec_trained &lt;- prep(mod_rec, training = ames_train, verbose = TRUE)
 
 Here, the "training" is to determine which levels to lump together and to enumerate the factor levels of the `Neighborhood` variable.
 
-An unused option, `retain = TRUE`, that keeps the processed version of the training set around so we don't have to recompute it. 
-
-
 ---
 
 # Preparing the Recipe &lt;img src="images/recipes.png" class="title-hex"&gt;
@@ -390,40 +384,75 @@ mod_rec_trained
 ## Dummy variables from Neighborhood [trained]
 ```
 
-
 ---
 
-# Getting the Values &lt;img src="images/recipes.png" class="title-hex"&gt;
+# Getting the Values - Training &lt;img src="images/recipes.png" class="title-hex"&gt;
 
-Once the recipe is prepared, it can be applied to any data set using `bake()`: 
+Now that the recipe has been prepared, we can extract the processed training set from it, with all of the steps applied. To do that, we use `juice()`.
 
 
 ```r
-ames_test_dummies &lt;- bake(mod_rec_trained, new_data = ames_test)
-names(ames_test_dummies)
+# Extracts processed version of `ames_train`
+juice(mod_rec_trained)
 ```
 
 ```
-##  [1] "Longitude"                       "Latitude"                       
-##  [3] "Sale_Price"                      "Neighborhood_College_Creek"     
-##  [5] "Neighborhood_Old_Town"           "Neighborhood_Edwards"           
-##  [7] "Neighborhood_Somerset"           "Neighborhood_Northridge_Heights"
-##  [9] "Neighborhood_Gilbert"            "Neighborhood_Sawyer"            
-## [11] "Neighborhood_other"
+## # A tibble: 2,199 x 11
+##    Longitude Latitude Sale_Price Neighborhood_Co… Neighborhood_Ol… Neighborhood_Ed… Neighborhood_So…
+##        &lt;dbl&gt;    &lt;dbl&gt;      &lt;dbl&gt;            &lt;dbl&gt;            &lt;dbl&gt;            &lt;dbl&gt;            &lt;dbl&gt;
+##  1     -93.6     42.1       5.24                0                0                0                0
+##  2     -93.6     42.1       5.39                0                0                0                0
+##  3     -93.6     42.1       5.28                0                0                0                0
+##  4     -93.6     42.1       5.29                0                0                0                0
+##  5     -93.6     42.1       5.33                0                0                0                0
+##  6     -93.6     42.1       5.28                0                0                0                0
+##  7     -93.6     42.1       5.37                0                0                0                0
+##  8     -93.6     42.1       5.28                0                0                0                0
+##  9     -93.6     42.1       5.25                0                0                0                0
+## 10     -93.6     42.1       5.26                0                0                0                0
+## # … with 2,189 more rows, and 4 more variables: Neighborhood_Northridge_Heights &lt;dbl&gt;,
+## #   Neighborhood_Gilbert &lt;dbl&gt;, Neighborhood_Sawyer &lt;dbl&gt;, Neighborhood_other &lt;dbl&gt;
 ```
 
-If `retain = TRUE`, the training set does not need to be "rebaked". The `juice()` function can return the processed version of the training data.
+This is what you'd pass on to `fit()` your model.
 
-Selectors can be used with `bake()` to only extract relevant columns and the default is `everything()`. 
+---
+
+# Getting the Values - Testing &lt;img src="images/recipes.png" class="title-hex"&gt;
+
+After model fitting, you'll eventually want to make predictions on _new data_. But first, you have to reapply all of the pre-processing steps on it. To do that, use `bake()`.
+
+
+```r
+bake(mod_rec_trained, new_data = ames_test)
+```
+
+```
+## # A tibble: 731 x 11
+##    Longitude Latitude Sale_Price Neighborhood_Co… Neighborhood_Ol… Neighborhood_Ed… Neighborhood_So…
+##        &lt;dbl&gt;    &lt;dbl&gt;      &lt;dbl&gt;            &lt;dbl&gt;            &lt;dbl&gt;            &lt;dbl&gt;            &lt;dbl&gt;
+##  1     -93.6     42.1       5.33                0                0                0                0
+##  2     -93.6     42.1       5.02                0                0                0                0
+##  3     -93.6     42.1       5.27                0                0                0                0
+##  4     -93.6     42.1       5.60                0                0                0                0
+##  5     -93.6     42.1       5.28                0                0                0                0
+##  6     -93.6     42.1       5.17                0                0                0                0
+##  7     -93.6     42.1       5.02                0                0                0                0
+##  8     -93.7     42.1       5.46                0                0                0                0
+##  9     -93.7     42.1       5.44                0                0                0                0
+## 10     -93.7     42.1       5.33                0                0                0                0
+## # … with 721 more rows, and 4 more variables: Neighborhood_Northridge_Heights &lt;dbl&gt;,
+## #   Neighborhood_Gilbert &lt;dbl&gt;, Neighborhood_Sawyer &lt;dbl&gt;, Neighborhood_other &lt;dbl&gt;
+```
+
+This is what you'd pass on to `predict()`.
 
 ---
 class: middle, center
 
+# `juice()` is used to get the pre-processed training set &lt;br&gt; (basically for free)
 
-# `juice()` is used to get the training set results &lt;br&gt; (for almost free)
-
-# `bake()` is used for any data set
-
+# `bake()` is used to pre-process a _new_ data set
 
 ---
 
@@ -438,11 +467,11 @@ prep(...,   training = data_set)
 bake(...,   new_data = data_set)
 ```
 
-In the first case, `data` is used by the `recipe` function only to determine the column names and types (e.g. factor, numeric, etc). A small subset can be passed via `head` or `slice`. 
+* `recipe()` - `data` is used _only_ to determine column names and types. A 0-row data frame could even be used.
 
-For `prep`, the `training` argument should have all of the data used to estimate parameters and other quantities. 
+* `prep()` - `training` is the entire training set, used to estimate parameters in each step (like means or standard deviations).
 
-For `bake`, `new_data` is the data that the pre-processing should be applied to. 
+* `bake()` - `new_data` is data to apply the pre-processing to, using the _same estimated parameters_ from when `prep()` was called on the training set.
 
 ---
 
@@ -456,7 +485,7 @@ What were the results?
 
 Do you prefer either of these approaches to the other? 
 
-<div class="countdown" id="timer_5e20c16b" style="bottom:0;left:1;" data-warnwhen="0">
+<div class="countdown" id="timer_5e2e3155" style="bottom:0;left:1;" data-warnwhen="0">
 <code class="countdown-time"><span class="countdown-digits minutes">10</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">00</span></code>
 </div>
 
@@ -481,10 +510,8 @@ For example, let's look at the relationship between the price of a house and the
 ```r
 price_breaks &lt;- (1:6)*(10^5)
 
-ggplot(
-    ames_train, 
-    aes(x = Year_Built, y = Sale_Price)
-  ) + 
+ames_train %&gt;%
+  ggplot(aes(x = Year_Built, y = Sale_Price)) + 
   geom_point(alpha = 0.4) +
   scale_y_log10() + 
   geom_smooth(method = "loess")
@@ -492,7 +519,7 @@ ggplot(
 ]
 
 .pull-right[
-&lt;img src="images/part-3-year-built-plot-1.svg" width="90%" style="display: block; margin: auto;" /&gt;
+&lt;img src="images/part-3-year-built-plot-1.svg" width="80%" style="display: block; margin: auto;" /&gt;
 ]
 
 
@@ -500,29 +527,47 @@ ggplot(
 
 # Interactions &lt;img src="images/ggplot2.png" class="title-hex"&gt;
 
-However... what if we seperate this trend based on whether the property has air conditioning (93.6% of the training set) or not (6.4%):
+However... what if we separate this trend based on whether the property has air conditioning or not.
 
 .pull-left[
 
-```r
-library(MASS) # to get robust linear regression model
 
-ggplot(
-    ames_train, 
-    aes(x = Year_Built, 
-        y = Sale_Price)
-  ) + 
+```r
+ames_train %&gt;%
+  group_by(Central_Air) %&gt;%
+  summarise(n = n()) %&gt;%
+  mutate(percent = n / sum(n) * 100)
+```
+
+```
+## # A tibble: 2 x 3
+##   Central_Air     n percent
+##   &lt;fct&gt;       &lt;int&gt;   &lt;dbl&gt;
+## 1 N             141    6.41
+## 2 Y            2058   93.6
+```
+
+
+
+```r
+# to get robust linear regression model
+library(MASS)
+
+ames_train %&gt;%
+  ggplot(aes(x = Year_Built, y = Sale_Price)) + 
   geom_point(alpha = 0.4) +
   scale_y_log10() + 
   facet_wrap(~ Central_Air, nrow = 2) +
   geom_smooth(method = "rlm") 
 ```
+
 ]
 
 .pull-right[
-&lt;img src="images/part-3-year-built-ac-plot-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
-]
 
+&lt;img src="images/part-3-year-built-ac-plot-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
+
+]
 
 ---
 
@@ -561,10 +606,12 @@ We first create the dummy variables for the qualitative predictor (`Central_Air`
 
 
 ```r
-recipe(Sale_Price ~ Year_Built + Central_Air, data = ames_train) %&gt;%
+interact_rec &lt;- recipe(Sale_Price ~ Year_Built + Central_Air, data = ames_train) %&gt;%
   step_log(Sale_Price) %&gt;%
   step_dummy(Central_Air) %&gt;%
-  step_interact(~ starts_with("Central_Air"):Year_Built) %&gt;%
+  step_interact(~ starts_with("Central_Air"):Year_Built)
+  
+interact_rec %&gt;%
   prep(training = ames_train) %&gt;%
   juice() %&gt;%
   # select a few rows with different values
@@ -594,8 +641,9 @@ class: inverse, middle, center
 # A Bivariate Example
 
 .pull-left[
-.font90[
-The plot on the right shows two predictors from a real _test_ set where the objective is to predict the two classes. 
+.font120[
+
+The plot on the right shows two **predictors** from a real _test_ set where the objective is to predict the two classes. 
 
 The predictors are strongly correlated and each has a right-skewed distribution. 
 
@@ -606,10 +654,14 @@ Some models might be sensitive to highly correlated and/or skewed predictors.
 Is there something that we can do to make the predictors _easier for the model to use_?
 
 ***Any ideas***?
+
 ]
 ]
+
 .pull-right[
+
 &lt;img src="images/part-3-bivariate-plot-natural-1.svg" width="90%" style="display: block; margin: auto;" /&gt;
+
 ]
 
 ???
@@ -626,7 +678,7 @@ These data are in the github repo
 
 
 .pull-left[
-.font90[
+.font110[
 We might start by estimating transformations of the predictors to resolve the skewness. 
 
 The Box-Cox transformation is a family of transformations originally designed for the outcomes of models. We can use it here for the predictors. 
@@ -686,9 +738,9 @@ In the Ames data, there are potential clusters of _highly correlated variables_:
  
 It would be nice if we could combine/amalgamate the variables in these clusters into a single variable that represents them. 
 
-Another way of putting this is that we would like to create artificial features of the data that account for a certain amount of variation in the data. 
+Another way of putting this is that we would like to create artificial features of the data that account for a certain amount of _variation_ in the data. 
 
-There are a few different methods that can accomplish this; we will focus on principal component analysis (PCA) as a solution. Another, regularization, will be discussed later. 
+There are a few different methods that can accomplish this; we will focus on principal component analysis (PCA). Another, regularization, will be discussed later. 
 
 
 ---
@@ -697,24 +749,21 @@ There are a few different methods that can accomplish this; we will focus on pri
 
 Principal component analysis (PCA) is a multivariate statistical technique that can be used to create artificial new variables from an existing set. 
 
-The new variables are created to account for the most variation in the data. In this case, "variation" means correlation. 
-
 Conceptually, PCA determines which variables account for the most correlation in the data and creates a new variable that is a linear combination of all the predictors. 
 
 * This is called the _first principal component_ (aka `PC1`).
 
 * This linear combination emphasizes the variables that are the most correlated. 
 
-The information that PC #1 represents is then _removed from the data_. 
+The variables constructing `PC1` are then _removed from the data_. 
 
 The second PCA component is the linear combination that accounts for the most left-over correlation in the data (and so on). 
-
 
 ---
 
 # PCA Signal Extraction 
 
-To recap:
+The main takeaways:
 
 * The components account for as much as the variation in the original data as possible.
 
@@ -752,22 +801,23 @@ We can build on our transformed data recipe and add normalization:
 bivariate_pca &lt;- 
   recipe(Class ~ PredictorA + PredictorB, data = bivariate_data_train) %&gt;%
   step_BoxCox(all_predictors()) %&gt;%
-  step_center(all_predictors()) %&gt;%
-  step_scale(all_predictors()) %&gt;%
+  step_normalize(all_predictors()) %&gt;% # center and scale
   step_pca(all_predictors()) %&gt;%
-  prep(training = bivariate_data_test, verbose = FALSE)
+  prep(training = bivariate_data_train)
 
 pca_test &lt;- bake(bivariate_pca, new_data = bivariate_data_test)
 
 # Put components axes on the same range
 pca_rng &lt;- extendrange(c(pca_test$PC1, pca_test$PC2))
 
-ggplot(pca_test, aes(x = PC1, y = PC2, color = Class)) +
+pca_test %&gt;%
+  ggplot(aes(x = PC1, y = PC2, color = Class)) +
   geom_point(alpha = .2, cex = 1.5) + 
   theme(legend.position = "top") +
   scale_colour_calc() +
   xlim(pca_rng) + ylim(pca_rng) + 
-  xlab("Principal Component 1") + ylab("Principal Component 2") 
+  xlab("Principal Component 1") + 
+  ylab("Principal Component 2")
 ```
 
 
@@ -784,18 +834,22 @@ YJ transformation
 # Back to the Bivariate Example
 
 .pull-left[
-.font90[
+.font120[
+
 Recall that even after the Box-Cox transformation was applied to our previous example, there was still a high degree of correlation between the predictors. 
 
 After the transformation, the predictors were centered and scaled, then PCA was conducted. The plot on the right shows the results. 
 
-Since these two predictors are highly correlated, the first component captures 91.2% of the variation in the original data. However...
+Since these two predictors are highly correlated, the first component captures 91.7% of the variation in the original data. However...
 
 ...recall that PCA does not guarantee that the components are associated with the outcome. In this example, the _least important_ component has the association with the outcome.  
+
 ]
 ]
 .pull-right[
+
 &lt;img src="images/part-3-bivariate-plot-pca-1.svg" width="90%" style="display: block; margin: auto;" /&gt;
+
 ]
 
 
@@ -826,6 +880,7 @@ class: inverse, middle, center
 
 .pull-left[
 
+
 ```r
 ggplot(ames_train, 
        aes(x = Longitude, y = Sale_Price)) + 
@@ -842,10 +897,12 @@ Splines add nonlinear versions of the predictor to a linear model to create smoo
 
 This "basis expansion" technique will be seen again in the regression section of the workshop. 
 
-
 ]
+
 .pull-right[
+
 &lt;img src="images/part-3-longitude-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
+
 ]
 
 
@@ -854,6 +911,7 @@ This "basis expansion" technique will be seen again in the regression section of
 # Latitude &lt;img src="images/ggplot2.png" class="title-hex"&gt;
 
 .pull-left[
+
 
 ```r
 ggplot(ames_train, 
@@ -866,33 +924,39 @@ ggplot(ames_train,
   ) + 
   scale_y_log10()
 ```
+
 ]
 
 .pull-right[
+
 &lt;img src="images/part-3-latitude-1.svg" width="100%" style="display: block; margin: auto;" /&gt;
+
 ]
 
 ---
 
 # Linear Models Again &lt;img src="images/recipes.png" class="title-hex"&gt;
 
-.font80[
-Let's add a few extra predictors and  some preprocessing. 
-
-* Two numeric predictors are very skewed and could use a transformation (`Lot_Area` and `Gr_Liv_Area`).
+.pull-left-a-little[
 
 * We'll add neighborhood in as well and a few other house features. 
 
-* Our plots suggests that the coordinates can be helpful but probably require a nonlinear representation. We can add these using _B-splines_ with 5 degrees of freedom. To evaluate this, we will create two versions of the recipe to evaluate this hypothesis. 
+* Our plots suggests that the coordinates can be helpful but probably require a nonlinear representation. We can add these using _B-splines_ with 5 degrees of freedom.
+
 ]
+
+.pull-right-a-lot[
+
+* Two numeric predictors are very skewed and could use a transformation (`Lot_Area` and `Gr_Liv_Area`).
 
 
 ```r
-ames_rec &lt;- 
-  recipe(Sale_Price ~ Bldg_Type + Neighborhood + Year_Built + 
-           Gr_Liv_Area + Full_Bath + Year_Sold + Lot_Area +
-           Central_Air + Longitude + Latitude,
-         data = ames_train) %&gt;%
+ames_rec &lt;- recipe(
+    Sale_Price ~ Bldg_Type + Neighborhood + Year_Built + 
+                 Gr_Liv_Area + Full_Bath + Year_Sold + Lot_Area +
+                 Central_Air + Longitude + Latitude,
+    data = ames_train
+  ) %&gt;%
   step_log(Sale_Price, base = 10) %&gt;%
   step_BoxCox(Lot_Area, Gr_Liv_Area) %&gt;%
   step_other(Neighborhood, threshold = 0.05)  %&gt;%
@@ -901,6 +965,8 @@ ames_rec &lt;-
   step_ns(Longitude, Latitude, deg_free = 5)
 ```
 
+]
+
 
 
 
@@ -908,7 +974,7 @@ ames_rec &lt;-
 
 # Combining the Recipe with a Model &lt;img src="images/recipes.png" class="title-hex"&gt;&lt;img src="images/parsnip.png" class="title-hex"&gt;&lt;img src="images/broom.png" class="title-hex"&gt;
 
-It's pretty simple: 
+- `prep()` - `juice()` - `fit()`
 
 
 ```r
@@ -928,13 +994,15 @@ glance(lm_fit$fit)
 ## 1     0.802         0.799 0.0800      303.       0    30  2448. -4834. -4657.     13.9        2169
 ```
 
+- `bake()` - `predict()`
+
+
 ```r
-holdout_data &lt;- bake(ames_rec, ames_test, all_predictors())
+ames_test_processed &lt;- bake(ames_rec, ames_test, all_predictors())
 
 # but let's not do this
-# predict(lm_fit, new_data = holdout_data)
+# predict(lm_fit, new_data = ames_test_processed)
 ```
-
 
 ---
 
@@ -946,10 +1014,12 @@ holdout_data &lt;- bake(ames_rec, ames_test, all_predictors())
 We are 
 
  * estimating transformations on some variables, 
+ 
  * making nonlinear features for the geocoding variables, and 
+ 
  * estimating new encodings for some factor variables. 
 
-These should definately be included in our overall modeling process. 
+These should definitely be included in our overall modeling process. 
 
 ]
 .pull-right[
@@ -958,35 +1028,30 @@ These should definately be included in our overall modeling process.
 
 ]
 
-
-
 ---
 
 # Workflows
 
 The `workflows` package enables a handy type of object that can bundle pre-processing and models together. 
 
-The advantages are:
-
 - You don’t have to keep track of separate objects in your workspace.
 
-- The recipe prepping and model fitting can be executed using a single call to `fit()` instead of the sequence of `prep()`-`juice()`-`fit()`.
+- The recipe prepping and model fitting can be executed using a single call to `fit()` instead of `prep()`-`juice()`-`fit()`.
 
-- Workflows _will_ be able to add post-processing operations in upcoming versions. An example of post-processing would be to  modifying (and tuning) the probability cutoff for two-class models. 
+- The recipe baking and model predictions are handled with a single call to `predict()` instead of `bake()`-`predict()`.
 
+- Workflows _will_ be able to add post-processing operations in upcoming versions. An example of post-processing would be to modify (and tune) the probability cutoff for two-class models. 
 
 ---
 
-# An example &lt;img src="images/parsnip.png" class="title-hex"&gt;
-
-.font80[
+# Workflows &lt;img src="images/recipes.png" class="title-hex"&gt;&lt;img src="images/parsnip.png" class="title-hex"&gt;
 
 
 ```r
-ames_wfl &lt;- 
-  workflow() %&gt;% 
+ames_wfl &lt;- workflow() %&gt;% 
   add_recipe(ames_rec) %&gt;% 
   add_model(lm_mod)
+
 ames_wfl
 ```
 
@@ -1011,19 +1076,17 @@ ames_wfl
 ## Computational engine: lm
 ```
 
-
-]
-
-
-
 ---
 
 # 1-Step fitting and predicting &lt;img src="images/parsnip.png" class="title-hex"&gt;
 
 
 ```r
+# preps() `ames_train`, juice()s it, then fit()s model
 ames_wfl_fit &lt;- fit(ames_wfl, ames_train)
-predict(ames_wfl_fit, ames_test %&gt;% slice(1:5))
+
+# bake()s `ames_test`, then predict()s
+predict(ames_wfl_fit, ames_test) %&gt;% slice(1:5)
 ```
 
 ```
@@ -1037,45 +1100,34 @@ predict(ames_wfl_fit, ames_test %&gt;% slice(1:5))
 ## 5  5.32
 ```
 
-.font90[
-
-Some notes:
-
  * `add_formula()` can be used as a simple alternative to `add_recipe()`. 
  
  * A _secondary formula_ can be given to `add_model()` that will be directly passed to the model. This is helpful when recipes are used with  GAMs or mixed-models.  
  
- * There are `remove_*` and `update_*` functions too. 
-
-]
-
-
-
-
+ * There are `remove_*()` and `update_*()` functions too. 
 
 ---
 
-# A Quick Knowledge Check
-
-Match these tasks to packages:
+# A Quick Knowledge Check - Match tasks to packages
 
 .pull-left[
 
 * Fit a K-NN model
  
-* Determine holidays from a date column
+* Extract holidays from dates
 
 * Make a training/test split
-
-* Estimate class probabilities
  
 * Bundle a recipe and model
+
+* Is high in vitamin A
  
 * Compute R&lt;sup&gt;2&lt;/sup&gt;
  
 * Bin a predictor (but seriously,...don't)
 
 ]
+
 .pull-right[
 
 * `workflows`
@@ -1092,10 +1144,7 @@ Match these tasks to packages:
  
 * `ggvis`
 
-
 ]
-
-
     </textarea>
 <style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
 <script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>

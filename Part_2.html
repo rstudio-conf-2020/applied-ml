@@ -4,9 +4,7 @@
     <title>Applied Machine Learning</title>
     <meta charset="utf-8" />
     <meta name="author" content="Max Kuhn and Davis Vaughan (RStudio)" />
-    <meta name="date" content="2020-01-16" />
-    <script src="libs/jquery-1.11.3/jquery.min.js"></script>
-    <script src="libs/elevate-section-attrs-2.0/elevate-section-attrs.js"></script>
+    <meta name="date" content="2020-01-26" />
     <link href="libs/remark-css-0.0.1/default.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css" integrity="sha384-oS3vJWv+0UjzBfQzYUhtDYW+Pj2yciDJxpsK1OYPAYjqT085Qq/1cq5FLXAZQ7Ay" crossorigin="anonymous">
     <link rel="stylesheet" href="assets/css/aml-theme.css" type="text/css" />
@@ -47,21 +45,20 @@ library(tidymodels)
 ```
 
 ```
-## ── Attaching packages ─────────────────────────────────────────────────────────── tidymodels 0.0.4 ──
+## ── Attaching packages ────────────────────────────── tidymodels 0.0.3 ──
 ```
 
 ```
-## ✓ broom     0.5.2          ✓ recipes   0.1.9     
-## ✓ dials     0.0.4          ✓ rsample   0.0.5     
-## ✓ dplyr     0.8.3          ✓ tibble    2.1.3     
-## ✓ ggplot2   3.2.1          ✓ tune      0.0.1     
-## ✓ infer     0.5.1          ✓ workflows 0.1.0     
-## ✓ parsnip   0.0.4.9000     ✓ yardstick 0.0.4     
-## ✓ purrr     0.3.3
+## ✓ broom     0.5.3          ✓ purrr     0.3.3     
+## ✓ dials     0.0.4.9000     ✓ recipes   0.1.9     
+## ✓ dplyr     0.8.3          ✓ rsample   0.0.5     
+## ✓ ggplot2   3.2.1          ✓ tibble    2.1.3     
+## ✓ infer     0.5.1          ✓ yardstick 0.0.4     
+## ✓ parsnip   0.0.5
 ```
 
 ```
-## ── Conflicts ────────────────────────────────────────────────────────────── tidymodels_conflicts() ──
+## ── Conflicts ───────────────────────────────── tidymodels_conflicts() ──
 ## x purrr::discard()    masks scales::discard()
 ## x dplyr::filter()     masks stats::filter()
 ## x dplyr::lag()        masks stats::lag()
@@ -100,9 +97,13 @@ There are a few different ways to do the split: simple random sampling, _stratif
 
 For stratification:
 
-* **classification**: this would mean sampling within the classes to preserve the distribution of the outcome in the training and test sets
+* **Classification**: 
 
-* **regression**: determine the quartiles of the data set and sample within those artificial groups
+  This would mean sampling within the classes to preserve the distribution of the outcome in the training and test sets.
+
+* **Regression**:
+
+  Determine the quartiles of the data set and sample within those artificial groups.
 
 
 ---
@@ -193,32 +194,48 @@ class: inverse, middle, center
 
 # Specifying Models in R Using Formulas
 
-To fit a model to the housing data, the model terms must be specified. Historically, there are two main interfaces for doing this. 
+To fit a model to the housing data, the model terms must be specified. Historically, there are two main interfaces for doing this. The **formula** interface uses R [formula rules](https://cran.r-project.org/doc/manuals/r-release/R-intro.html#Formulae-for-statistical-models) to specify a _symbolic_ representation of the terms:
 
-The **formula** interface using R [formula rules](https://cran.r-project.org/doc/manuals/r-release/R-intro.html#Formulae-for-statistical-models) to specify a _symbolic_ representation of the terms:
+.pull-left-a-lot[
 
 Variables + interactions
 
 
 ```r
-model_fn(Sale_Price ~ Neighborhood + Year_Sold + Neighborhood:Year_Sold, data = ames_train)
+model_fn(
+  Sale_Price ~ Neighborhood + Year_Sold + Neighborhood:Year_Sold,
+  data = ames_train
+)
 ```
 
-Shorthand for all predictors
-
-
-```r
-model_fn(Sale_Price ~ ., data = ames_train)
-```
 
 Inline functions / transformations
 
 
 ```r
-model_fn(log10(Sale_Price) ~ ns(Longitude, df = 3) + ns(Latitude, df = 3), data = ames_train)
+model_fn(
+  log10(Sale_Price) ~ ns(Longitude, df = 3) + ns(Latitude, df = 3),
+  data = ames_train
+)
 ```
 
-This is very convenient but it has some disadvantages.  
+]
+
+.pull-right-a-little[
+
+Shorthand for all predictors
+
+
+```r
+model_fn(
+  Sale_Price ~ .,
+  data = ames_train
+)
+```
+
+This is very convenient but it has some disadvantages.
+
+]
 
 ---
 
@@ -250,13 +267,13 @@ Some modeling function have a non-formula (XY) interface. This usually has argum
 ```r
 # Usually, the variables must all be numeric
 pre_vars &lt;- c("Year_Sold", "Longitude", "Latitude")
-model_fn(x = ames_train[, pre_vars],
-         y = ames_train$Sale_Price)
+
+model_fn(x = ames_train[, pre_vars], y = ames_train$Sale_Price)
 ```
 
 This is inconvenient if you have transformations, factor variables, interactions, or any other operations to apply to the data prior to modeling. 
 
-Overall, it is difficult to predict if a package has one or both of these interfaces. For example, `lm` only has formulas. 
+Overall, it is difficult to predict if a package has one or both of these interfaces. For example, `lm()` only has formulas. 
 
 There is a **third interface**, using _recipes_ that will be discussed later that solves some of these issues. 
 
@@ -290,6 +307,61 @@ names(simple_lm_values)
 
 ---
 
+# A Linear Regression Model &lt;img src="images/broom.png" class="title-hex"&gt;
+
+
+```r
+head(simple_lm_values, n = 2)
+```
+
+```
+## # A tibble: 2 x 10
+##   log10.Sale_Pric… Longitude Latitude .fitted .se.fit  .resid    .hat .sigma
+##              &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt;
+## 1             5.24     -93.6     42.1    5.23 0.00581 0.00920 0.00127  0.163
+## 2             5.39     -93.6     42.1    5.22 0.00581 0.169   0.00127  0.163
+## # … with 2 more variables: .cooksd &lt;dbl&gt;, .std.resid &lt;dbl&gt;
+```
+
+After working with the individual data points, you can move on to the coefficients themselves. `tidy()` extracts the coefficients from the model. `glance()` summarizes a model fit's overarching metrics.
+
+.pull-left-a-lot[
+
+
+```r
+tidy(simple_lm)
+```
+
+```
+## # A tibble: 3 x 5
+##   term        estimate std.error statistic  p.value
+##   &lt;chr&gt;          &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;
+## 1 (Intercept)  -307.      15.1       -20.3 2.39e-84
+## 2 Longitude      -2.03     0.134     -15.1 2.41e-49
+## 3 Latitude        2.89     0.190      15.3 5.43e-50
+```
+
+]
+
+.pull-right-a-little[
+
+
+```r
+# But don't trust this too much!
+glance(simple_lm)[1:3]
+```
+
+```
+## # A tibble: 1 x 3
+##   r.squared adj.r.squared sigma
+##       &lt;dbl&gt;         &lt;dbl&gt; &lt;dbl&gt;
+## 1     0.170         0.169 0.163
+```
+
+]
+
+---
+
 # parsnip &lt;img src="images/parsnip.png" class="title-hex"&gt;
 
 - A tidy unified _interface_ to models
@@ -308,15 +380,13 @@ names(simple_lm_values)
 
   - Each interface has its own minutae to remember
   
-  - `parsnip` standardizes all that!
-  
 ---
 
 # parsnip in Action &lt;img src="images/parsnip.png" class="title-hex"&gt;
 
 .pull-left[
 
-1) Create specification
+1) Create a specification
 
 2) Set the engine
 
@@ -361,7 +431,7 @@ lm_fit
 ```
 ## parsnip model object
 ## 
-## Fit time:  2ms 
+## Fit time:  4ms 
 ## 
 ## Call:
 ## stats::lm(formula = formula, data = data)
@@ -386,15 +456,15 @@ ames_train_log &lt;- ames_train %&gt;%
 
 fit_xy(
   lm_mod,
-  y = ames_train_log$Sale_Price_Log,
-  x = ames_train_log %&gt;% dplyr::select(Latitude, Longitude)
+  y = dplyr::pull(ames_train_log, Sale_Price_Log),
+  x = dplyr::select(ames_train_log, Latitude, Longitude)
 )
 ```
 
 ```
 ## parsnip model object
 ## 
-## Fit time:  1ms 
+## Fit time:  2ms 
 ## 
 ## Call:
 ## stats::lm(formula = formula, data = data)
@@ -469,13 +539,14 @@ fit_knn &lt;-
   nearest_neighbor(mode = "regression", neighbors = 5) %&gt;%
   set_engine("kknn") %&gt;% 
   fit(log10(Sale_Price) ~ Longitude + Latitude, data = ames_train)
+
 fit_knn
 ```
 
 ```
 ## parsnip model object
 ## 
-## Fit time:  31ms 
+## Fit time:  36ms 
 ## 
 ## Call:
 ## kknn::train.kknn(formula = formula, data = data, ks = ~5)
@@ -488,29 +559,40 @@ fit_knn
 ```
 
 ---
+layout: false
+class: middle, center
+
+# Now that we have fit a model on the _training_ set, 
+# is it time to make predictions on the _test_ set?
+
+---
+
+&lt;img src="images/nope.png" width="40%" style="display: block; margin: auto;" /&gt;
+
+---
 
 # DANGER
 
 .pull-left[
 
+In general, we would **not** want to predict the test set at this point, although we will do so to illustrate how the code works.
+
 In a real scenario, we would use _resampling_ methods (e.g. cross-validation, bootstrapping, etc) or a validation set to evaluate how well the model is doing. 
 
-`tidymodels` has a great infrastructure to do this with the `rsample` package and we will talk about this soon to demonstrate how we should _really_ evaluate models. 
-
-
-In general, we would **not** want to predict the test set at this point. I'll do so to illustrate how the code to make predictions works.  
 ]
 .pull-right[
 
-&lt;img src="images/nope.png" width="70%" style="display: block; margin: auto;" /&gt;
+&lt;img src="images/nope.png" width="55%" style="display: block; margin: auto;" /&gt;
 
 ]
+
+`tidymodels` has a great infrastructure to do this with `rsample`, and we will talk about this soon to demonstrate how we should _really_ evaluate models. 
 
 ---
 
 # Predictions &lt;img src="images/purrr.png" class="title-hex"&gt;&lt;img src="images/parsnip.png" class="title-hex"&gt;&lt;img src="images/dplyr.png" class="title-hex"&gt;
 
-Now, let's compute predictions and performance measures:
+For now, let's compute predictions and performance measures on the test set:
 
 .pull-left[
 
@@ -543,15 +625,13 @@ test_pred %&gt;%
 
 `parsnip` tools are very standardized. 
 
- * `predict` always produces the same data structure (a tibble) with a row for each row of `new_data`. 
+ * `predict()` always produces a tibble with a row for each row of `new_data`. 
  
  * The column names are also [predictable](https://tidymodels.github.io/parsnip/reference/predict.model_fit.html#value). For (univariate) regression predictions, the prediction column is always `.pred`. 
 
-So, for the KNN model, just change the argument to `fit_knn` and everything works.
-
-
 ]
 
+So, for the KNN model, just change the argument to `fit_knn` and everything works.
 
 ---
 
@@ -592,7 +672,6 @@ test_pred  %&gt;%
 There are sometimes different ways to [estimate these statistics](https://tidymodels.github.io/yardstick/articles/multiclass.html); `.estimator` is not always "standard". 
 
 ]
-
     </textarea>
 <style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
 <script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>

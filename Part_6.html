@@ -4,9 +4,7 @@
     <title>Applied Machine Learning</title>
     <meta charset="utf-8" />
     <meta name="author" content="Max Kuhn and Davis Vaughan (RStudio)" />
-    <meta name="date" content="2020-01-17" />
-    <script src="libs/jquery-1.11.3/jquery.min.js"></script>
-    <script src="libs/elevate-section-attrs-2.0/elevate-section-attrs.js"></script>
+    <meta name="date" content="2020-01-26" />
     <link href="libs/remark-css-0.0.1/default.css" rel="stylesheet" />
     <script src="libs/kePrint-0.0.1/kePrint.js"></script>
     <link href="libs/countdown-0.3.3/countdown.css" rel="stylesheet" />
@@ -39,9 +37,13 @@ class: title-slide, center
 # Outline
 
 * Performance Measures
+
 * Amazon Review Data
+
 * Classification Trees
+
 * Boosting
+
 * Extra topics as time allows
 
 
@@ -50,33 +52,25 @@ class: title-slide, center
 # Load Packages
 
 
-.code60[
-
 ```r
 library(tidymodels)
 ```
 
 ```
-## Registered S3 method overwritten by 'xts':
-##   method     from
-##   as.zoo.xts zoo
+## ── Attaching packages ───────────────────────────────────────────── tidymodels 0.0.4 ──
 ```
 
 ```
-## ── Attaching packages ────────────────────────────────────────────────────────── tidymodels 0.0.4 ──
+## ✓ broom     0.5.3     ✓ recipes   0.1.9
+## ✓ dials     0.0.4     ✓ rsample   0.0.5
+## ✓ dplyr     0.8.3     ✓ tibble    2.1.3
+## ✓ infer     0.5.1     ✓ tune      0.0.1
+## ✓ parsnip   0.0.5     ✓ workflows 0.1.0
+## ✓ purrr     0.3.3     ✓ yardstick 0.0.5
 ```
 
 ```
-## ✓ broom     0.5.2          ✓ recipes   0.1.9     
-## ✓ dials     0.0.4          ✓ rsample   0.0.5     
-## ✓ dplyr     0.8.3          ✓ tibble    2.1.3     
-## ✓ infer     0.5.1          ✓ tune      0.0.1     
-## ✓ parsnip   0.0.4.9000     ✓ workflows 0.1.0     
-## ✓ purrr     0.3.3          ✓ yardstick 0.0.4
-```
-
-```
-## ── Conflicts ───────────────────────────────────────────────────────────── tidymodels_conflicts() ──
+## ── Conflicts ──────────────────────────────────────────────── tidymodels_conflicts() ──
 ## x purrr::accumulate()    masks foreach::accumulate()
 ## x purrr::discard()       masks scales::discard()
 ## x dplyr::filter()        masks stats::filter()
@@ -95,7 +89,6 @@ library(tidymodels)
 ## x purrr::when()          masks foreach::when()
 ## x recipes::yj_trans()    masks scales::yj_trans()
 ```
-]
 
 
 
@@ -141,6 +134,7 @@ The class predictions are usually created by thresholding some numeric output of
 # Class Prediction Metrics &lt;img src="images/yardstick.png" class="title-hex"&gt;
 
 .pull-left[
+
 With class predictions, a common summary method is to produce a _confusion matrix_ which is a simple cross-tabulation between the observed and predicted classes:
 
 
@@ -159,7 +153,9 @@ two_class_example %&gt;%
 These can be visualized using [mosaic plots](https://en.wikipedia.org/wiki/Mosaic_plot). 
 
 ]
+
 .pull-right[
+
 Accuracy is the most obvious metric for characterizing the performance of models.
 
 
@@ -175,9 +171,8 @@ two_class_example %&gt;%
 ## 1 accuracy binary         0.838
 ```
 
-However, it suffers when there is a _class imbalance_; suppose 95% of the data have a specific class. 95% accuracy can be achieved by predicting samples to be the majority class.  
+However, it suffers when there is a _class imbalance_; suppose 95% of the data have a specific class. 95% accuracy can be achieved by predicting samples to be the majority class. There are measures that correct for the natural event rate, such as [Cohen's Kappa](https://en.wikipedia.org/wiki/Cohen%27s_kappa).
 
-There are measures that correct for the natural event rate, such as [Cohen's Kappa](https://en.wikipedia.org/wiki/Cohen%27s_kappa).
 ]
 
 
@@ -190,9 +185,9 @@ There are a number of specialized metrics that can be used when there are two cl
 
 One common way to think about performance is to consider false negatives and false positives. 
 
-* The sensitivity is the _true positive rate_ (out of all of the actual positives, how many did you get right?).
+* The **sensitivity** is the _true positive rate_ (out of all of the actual positives, how many did you get right?).
 
-* The specificity is the rate of correctly predicted negatives, or 1 - _false positive rate_ (out of all the actual negatives, how many did you get right?). 
+* The **specificity** is the rate of correctly predicted negatives, or 1 - _false positive rate_ (out of all the actual negatives, how many did you get right?). 
 
 From this, assuming that `Class1` is the event of interest: 
 
@@ -222,7 +217,7 @@ It should be noted that these are _conditional measures_ since we need to know t
 
 The event rate is the _prevalence_ (or the Bayesian _prior_). Sensitivity and specificity are analogous to the _likelihood values_. 
 
-There are _unconditional_ analogs to the _posterior values_ called the positive predictive values and the negative predicted values. 
+There are _unconditional_ analogs to the _posterior values_ called the positive predictive values and the negative predictive values. 
 
 A variety of other measures are available for two class systems, especially for _information retrieval_.  
 
@@ -234,7 +229,7 @@ One thing to consider: what happens if our **threshold to call a sample an event
 # Changing the Probability Threshold &lt;img src="images/yardstick.png" class="title-hex"&gt;
 
 .pull-left[
-For two classes, the 50% cutoff is customary; if the probability of class #1 is &gt;= 50%, they would be labelled as `Class1`. 
+For two classes, the 50% cutoff is customary; if the probability of class 1 is &gt;= 50%, they would be labelled as `Class1`. 
 
 
 What happens when you change the cutoff? 
@@ -244,18 +239,17 @@ What happens when you change the cutoff?
 
 * Decreasing the cutoff makes it easier to be called `Class1` `\(\Rightarrow\)` more predicted events, specificity `\(\downarrow\)`, sensitivity `\(\uparrow\)`  
 
-With two classes, the **Receiver Operating Characteristic (ROC) curve** can be used to estimate performance using a combination of sensitivity and specificity.  
-
 ]
 .pull-right[
+
+With two classes, the **Receiver Operating Characteristic (ROC) curve** can be used to estimate performance using a combination of sensitivity and specificity.  
   
 To create the curve, many alternative cutoffs are evaluated. 
 
 For each cutoff, we calculate the sensitivity and specificity.
 
 The ROC curve plots the sensitivity (eg. true positive rate) versus 1 - specificity (eg. the false positive rate).
-  
-The area under the ROC curve is a common metric of performance.  
+
 ]
  
   
@@ -355,7 +349,7 @@ Most of the work for the features is to extra information from text.
 
 We will use the basics here but more information can be found in the [_Tidy Text Mining with R_](https://www.tidytextmining.com/).
 
-To do this, we will heavily reply on the `textrecipes` package. 
+To do this, we will heavily rely on the `textrecipes` package. 
  
 ---
 
@@ -406,7 +400,7 @@ text_rec &lt;-
 .pull-right-a-little[
 Two of the steps that we'll use will destroy the original predictor. 
 
-We'll use a basic `mutate` to make a temporary copy. 
+We'll use a basic `step_mutate()` to make a temporary copy. 
 ]
 
 ---
@@ -552,24 +546,18 @@ text_rec &lt;-
 ]
 
 ]
-.pull-right-a-little[
 
-.font90[
+.pull-right-a-little[
 
 Feature hashing creates numeric terms from words in a sentence (or some other token) similar to dummy variables. 
 
 However, there are big differences, including: 
 
 * There is no look-up table to consult to make the mapping 
-
 * The placement of the non-zero values in meant to emulate randomness. 
-
 * The new features are computed on the actual words. 
 
 ]
-
-]
-
 
 ---
 
@@ -627,7 +615,7 @@ For string "On Time and product looked like it", a sketch of the calculations to
 &lt;/table&gt;
 ]
 .pull-right[
-Note that multiple words end up going into the same feature column. This is _aliasing_ (statistical term) or a _collision_ (comp sci term).
+Note that multiple words end up in the same feature column. This is _aliasing_ (statistical term) or a _collision_ (comp sci term).
 
 * We wouldn't be able to distinguish the effect of those two words. 
 
@@ -668,9 +656,8 @@ text_rec &lt;-
 ]
 
 ]
-.pull-right-a-little[
 
-.font90[
+.pull-right-a-little[
 
 The naive Bayes model will be used on these data. 
 
@@ -680,7 +667,9 @@ It computes probability values from each predictor.
 
  - If categorical, a contingency table is used.  
 
-Since the hash values are really about the presence/absence of words, we should convert then to 2-level factor variables to ensure appropriate calculations. 
+.font100[
+
+Since the hash values are really about the presence/absence of words, we should convert them to 2-level factor variables to ensure appropriate calculations. 
 
 ]
 
@@ -718,7 +707,7 @@ text_rec &lt;-
 
 ]
 .pull-right-a-little[
-Removing has features that are all zero in the training set increases computational efficiency and may stop model failures. 
+Removing the features that are all zero in the training set increases computational efficiency and may stop model failures. 
 ]
 
 ---
@@ -749,12 +738,11 @@ class: inverse, middle, center
 
 A classification tree searches through each predictor to find a value of a single variable that best splits the data into two groups. 
 
-For the two resulting groups, the process is repeated until a hierarchical structure (a tree) is created. 
+For the resulting groups, the process is repeated until a hierarchical structure (a tree) is created. 
 
 * In effect, trees partition the `\(X\)` space into rectangular sections that assign a single value to samples within the rectangle.
 
-The final structure in the tree is the _terminal node_ and each path through the tree is a _rule_.   
-
+The final structure in the tree is the _terminal node_ and each path through the tree is a _rule_.
 
 .pull-left[
 
@@ -818,11 +806,11 @@ For example, for simulated data with a 50% event rate, which one of these splits
 
 .pull-left[
 
-&lt;img src="images/part-6-good-split-1.svg" width="80%" style="display: block; margin: auto;" /&gt;
+&lt;img src="images/part-6-good-split-1.svg" width="70%" style="display: block; margin: auto;" /&gt;
 ]
 .pull-right[
 
-&lt;img src="images/part-6-bad-split-1.svg" width="80%" style="display: block; margin: auto;" /&gt;
+&lt;img src="images/part-6-bad-split-1.svg" width="70%" style="display: block; margin: auto;" /&gt;
 ]
 
 
@@ -837,8 +825,6 @@ CART conducts cost-complexity pruning to find the "right sized tree".
 It basically penalizes the error rate of the tree by the number of terminal nodes by minimizing
 
 `$$Error_{cv} - (c_p \times nodes)$$`
-
-Notes: 
 
 * The `\(c_p\)` value, usually between 0 and 0.1, controls the depth of the tree. 
 
@@ -877,14 +863,18 @@ Like MARS, there are two main ways to tune the CART model:
  
 
 ```r
-    decsion_tree(min_n = tune()) %&gt;% set_engine("rpart") %&gt;% set_mode("classification")
+    decision_tree(min_n = tune()) %&gt;% 
+      set_engine("rpart") %&gt;% 
+      set_mode("classification")
 ```
 
  * Manually specify `\(c_p\)` values and use external resampling with a metric of your choice:
  
 
 ```r
-    decsion_tree(cost_complexity = tune(), min_n = tune()) %&gt;% set_engine("rpart") %&gt;% set_mode("classification")
+    decision_tree(cost_complexity = tune(), min_n = tune()) %&gt;% 
+      set_engine("rpart") %&gt;% 
+      set_mode("classification")
 ```
  
 I prefer the latter approach; I believe that the automated choice tends to pick overly simple models. 
@@ -947,14 +937,15 @@ cart_wfl &lt;-
   add_model(cart_mod)
 
 set.seed(2553)
-cart_tune &lt;-
-  tune_grid(
-    cart_wfl,
-    text_folds,
-    grid = 10,
-    metrics = metric_set(roc_auc),
-    control = ctrl
-  )
+
+cart_tune &lt;- tune_grid(
+  cart_wfl,
+  text_folds,
+  grid = 10,
+  metrics = metric_set(roc_auc),
+  control = ctrl
+)
+
 show_best(cart_tune, metric = "roc_auc")
 ```
 
@@ -1005,9 +996,13 @@ cart_pred %&gt;% slice(1:5)
 ## 5 Fold01       0.939      0.0606    48       412     0.000000271     7 great
 ```
 
+
 ```r
 cart_pred %&gt;% 
-  inner_join(select_best(cart_tune)) %&gt;% 
+  inner_join(
+    select_best(cart_tune), 
+    by = c("num_terms", "cost_complexity", "min_n")
+  ) %&gt;% 
   group_by(id) %&gt;% 
   roc_curve(score, .pred_great) %&gt;% 
   autoplot()
@@ -1030,6 +1025,7 @@ cart_pred %&gt;%
 
 # A single (but approximate) ROC curve &lt;img src="images/yardstick.png" class="title-hex"&gt;&lt;img src="images/tune.png" class="title-hex"&gt;&lt;img src="images/ggplot2.png" class="title-hex"&gt;&lt;img src="images/dplyr.png" class="title-hex"&gt;
 
+
 Instead of showing all 10 curves, we could pool the 10 fold's worth of data and make a single curve that might approximate the "average" curve. 
 
 
@@ -1038,24 +1034,12 @@ Instead of showing all 10 curves, we could pool the 10 fold's worth of data and 
 .pull-left[
 
 ```r
+# For  tun_* object, get the right predictions 
+# and extract the ROC curve data
 auc_curve_data &lt;- function(x) {
     collect_predictions(x) %&gt;% 
     inner_join(select_best(x, "roc_auc")) %&gt;% 
     roc_curve(score, .pred_great)
-}
-approx_roc_curves &lt;- function(...) {
-  curves &lt;- map_dfr(list(...), auc_curve_data, .id = "model")
-  default_cut &lt;- 
-    curves %&gt;% 
-    group_by(model) %&gt;% 
-    arrange(abs(.threshold - .5)) %&gt;% 
-    slice(1)
-  ggplot(curves) +
-    aes(y = sensitivity, x = 1 - specificity, col = model) +
-    geom_abline(lty = 3) + 
-    geom_step(direction = "vh") + 
-    geom_point(data = default_cut) + 
-    coord_equal()
 }
 ```
 
@@ -1063,11 +1047,50 @@ approx_roc_curves &lt;- function(...) {
 .pull-right[
 
 ```r
+# Apply the `auc_roc_data()` function across
+# models. 
+approx_roc_curves &lt;- function(...) {
+  curves &lt;- map_dfr(
+    list(...), auc_curve_data, .id = "model"
+  )
+  
+  default_cut &lt;- curves %&gt;% 
+    group_by(model) %&gt;% 
+    arrange(abs(.threshold - .5)) %&gt;% 
+    slice(1)
+  
+  ggplot(curves) +
+    aes(y = sensitivity, x = 1 - specificity, 
+        col = model) +
+    geom_abline(lty = 3) + 
+    geom_step(direction = "vh") + 
+    geom_point(data = default_cut) + 
+    coord_equal()
+}
+```
+]
+
+]
+
+
+---
+
+# A single (but approximate) ROC curve &lt;img src="images/yardstick.png" class="title-hex"&gt;&lt;img src="images/tune.png" class="title-hex"&gt;&lt;img src="images/ggplot2.png" class="title-hex"&gt;&lt;img src="images/dplyr.png" class="title-hex"&gt;
+
+For our model: 
+
+.font90[
+
+.pull-left[
+
+```r
 # Use named arguments for better labels
 approx_roc_curves(CART = cart_tune)
 ```
 
-&lt;img src="images/part-6-cart-roc-approx-1.svg" width="70%" style="display: block; margin: auto;" /&gt;
+]
+.pull-right[
+&lt;img src="images/part-6-cart-roc-approx-1.svg" width="90%" style="display: block; margin: auto;" /&gt;
 ]
 
 ]
@@ -1093,7 +1116,7 @@ Let's take 20m and refit the model code above with a recipe that includes downsa
 [link to recipes documentation](https://tidymodels.github.io/recipes/reference/index.html)
 
 
-<div class="countdown" id="timer_5e225421" style="bottom:0;left:5;" data-warnwhen="0">
+<div class="countdown" id="timer_5e2e70c3" style="bottom:0;left:5;" data-warnwhen="0">
 <code class="countdown-time"><span class="countdown-digits minutes">20</span><span class="countdown-digits colon">:</span><span class="countdown-digits seconds">00</span></code>
 </div>
 
@@ -1131,6 +1154,7 @@ The original boosting algorithm was created for two-class problems and was desig
 
 ```
 Fit an initial tree where all samples are treated equally
+
 for i = 1 to M boosting iterations {
    Samples predicted   correctly have _increased_ weights
    Samples predicted incorrectly have _decreased_ weights
@@ -1145,9 +1169,7 @@ Once this sequence of trees were fit, the final prediction was a weighted averag
 
  * These weights were created from the performance estimates for each tree. 
 
-This led to a dramatic increase in performance and only works because if the instability of tree-based models. 
-
-
+This led to a dramatic increase in performance and only works because of the instability of tree-based models. 
 
 ---
 
@@ -1206,9 +1228,7 @@ His C4.5 algorithm was somewhat different than CART and, in some ways, much more
 
  * More than two splits, unbiased selection, better handling of missing values, a different pruning process, etc.
  
-Quinlan's modern models, **C5.0** and **Cubist**, are not as well known mostly since he has not published them. 
-
-C5.0 takes his C4.5 model and enables a classical boosting approach to building a sequence of trees. 
+Quinlan's modern models, **C5.0** and **Cubist**, are not as well known mostly since he has not published them. C5.0 takes his C4.5 model and enables a classical boosting approach to building a sequence of trees. 
 
 Most improvement comes in the first 50 iterations of boosting and the main two tuning parameters are `min_n` and the number of `trees` in the ensemble. 
 
@@ -1218,7 +1238,7 @@ The `C50` package is based on the original C code for this model. The best refer
 
 # C5.0 &lt;img src="images/tune.png" class="title-hex"&gt;&lt;img src="images/parsnip.png" class="title-hex"&gt;&lt;img src="images/dplyr.png" class="title-hex"&gt;
 
-This model is availible as a `parsnip` engine for `decision_tree()` as well as `boosted_tree()`. We will demonstrate with the latter. 
+This model is available as a `parsnip` engine for `decision_tree()` as well as `boosted_tree()`. We will demonstrate with the latter. 
 
 .font90[
 
@@ -1270,7 +1290,7 @@ C5_tune &lt;-
 approx_roc_curves(CART = cart_tune, C5 = C5_tune)
 ```
 
-&lt;img src="images/part-6-C5-roc-approx-1.svg" width="80%" style="display: block; margin: auto;" /&gt;
+&lt;img src="images/part-6-C5-roc-approx-1.svg" width="90%" style="display: block; margin: auto;" /&gt;
 
 ]
 .pull-right[
@@ -1338,11 +1358,11 @@ C5_wfl_final
 ```
 
 ```
-## ══ Workflow [trained] ══════════════════════════════════════════════════════════════════════════════
+## ══ Workflow [trained] ═════════════════════════════════════════════════════════════════
 ## Preprocessor: Recipe
 ## Model: boost_tree()
 ## 
-## ── Preprocessor ────────────────────────────────────────────────────────────────────────────────────
+## ── Preprocessor ───────────────────────────────────────────────────────────────────────
 ## 7 Recipe Steps
 ## 
 ## ● step_mutate()
@@ -1353,7 +1373,7 @@ C5_wfl_final
 ## ● step_texthash()
 ## ● step_zv()
 ## 
-## ── Model ───────────────────────────────────────────────────────────────────────────────────────────
+## ── Model ──────────────────────────────────────────────────────────────────────────────
 ## 
 ## Call:
 ## C5.0.default(x = x, y = y, trials = 54L, control = C50::C5.0Control(minCases = 33L, sample = 0))
@@ -1379,8 +1399,8 @@ C5_wfl_final
 .pull-left[
 
 ```r
-test_probs &lt;- 
-  predict(C5_wfl_final, testing_data, type = "prob") %&gt;% 
+test_probs &lt;- C5_wfl_final %&gt;%
+  predict(testing_data, type = "prob") %&gt;% 
   bind_cols(testing_data %&gt;% dplyr::select(score)) %&gt;% 
   bind_cols(predict(C5_wfl_final, testing_data))
 
@@ -1410,13 +1430,12 @@ conf_mat(test_probs, score, .pred_class)
 ```r
 roc_values &lt;- 
   roc_curve(test_probs, score, .pred_great)
+
 autoplot(roc_values)
 ```
 
 &lt;img src="images/part-6-test-set-curve-1.svg" width="80%" style="display: block; margin: auto;" /&gt;
 ]
-
-
 
 ---
 layout: false
@@ -1627,8 +1646,6 @@ There are a number of warnings that look like:
 &gt; `Numerical 0 probability for all classes with observation 1`
 
 This is due to the poorly calibrated probabilities although the warning is a bit misleading. This issue does not generally affect performance and can be ignored. 
-
-
 
 .pull-left[
 
@@ -1868,9 +1885,6 @@ There is additionally a _micro average_ that gives each _observation_ equal weig
 
 
 Find more information at the [yardstick vignette](https://tidymodels.github.io/yardstick/articles/multiclass.html).
-
-
-
     </textarea>
 <style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
 <script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
