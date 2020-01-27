@@ -94,7 +94,9 @@ devtools::install_github(c(
 We will be on-site at least 30min before the workshop commences in case you need any help getting packages installed. Prior to this, you can email `max@rstudio.com` with questions.
 
 
+## Note
 
+We don't provide the `Rmd` files for the slides mostly because they are complex and we don't support them. However, we do get requests for people who would like to use them as a template so we provide `Part_1.Rmd` if you want to use this format for your presentations.  
 
 ## Schedule
 
