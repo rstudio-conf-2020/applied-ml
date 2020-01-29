@@ -610,6 +610,9 @@ finalize(rf_set, mtcars %>% dplyr::select(-mpg))
 # ------------------------------------------------------------------------------
 # Hands-On: K-NN Grids
 
+knn_param <- 
+  parameters(neighbors(), weight_func(), dist_power())
+
 # ------------------------------------------------------------------------------
 # Tagging Tuning parameters (slide 40)
 
@@ -620,6 +623,29 @@ knn_mod <-
   set_mode("regression")
 
 parameters(knn_mod)
+
+# Max's code
+
+knn_param <- 
+  parameters(neighbors(), weight_func(), dist_power())
+
+grid_random(knn_param)
+# or 
+grid_random(neighbors(), weight_func(),  dist_power()) 
+
+grid_vals <- grid_max_entropy(knn_param, size = 50)
+
+grid_vals %>% ggplot(aes(x = neighbors, y = dist_power, col = weight_func)) + 
+  geom_point()
+
+knn_tune %>% 
+  collect_metrics() %>% 
+  dplyr::filter(.metric == "rmse") %>% 
+  ggplot(aes(x = neighbors, y = mean, col = weight_func)) + 
+  geom_point() + 
+  geom_line() +
+  theme(legend.position = "top") + 
+  ylim(c(0.07, 0.12))
 
 # ------------------------------------------------------------------------------
 # Tagging Tuning parameters (slide 41)
@@ -659,6 +685,26 @@ show_best(knn_tune, metric = "rmse", maximize = FALSE)
 # Hands-On: Explore the Data (slide 4)
 
 data(Chicago)
+
+library(lubridate)
+
+Chicago_copy <- 
+  Chicago %>% 
+  mutate(day = wday(date, label = TRUE, abbr = FALSE))
+
+Chicago_copy %>% 
+  ggplot(aes(x = day, y = ridership)) + 
+  geom_boxplot()
+
+Chicago_copy %>% 
+  ggplot(aes(x = factor(Bears_Home), y = ridership)) + 
+  geom_boxplot() + 
+  facet_wrap(~ day)
+
+corr_mat <- cor(Chicago[, 2:21])
+
+library(corrplot)
+corrplot(corr_mat, order = "hclust")
 
 # ------------------------------------------------------------------------------
 # A Recipe (slide 15)
